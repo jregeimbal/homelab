@@ -10,8 +10,8 @@ sudo hostnamectl set-hostname $NEW_HOSTNAME
 sudo perl -i -p -e "s/$OLD_HOSTNAME/$NEW_HOSTNAME/g" /etc/hosts
 
 # Install docker and start docker
-echo "Installing Docker"
-sudo apt install docker.io
+echo "Installing Docker and AppArmor"
+sudo apt install -y docker.io apparmor apparmor-utils
 sudo systemctl start docker
 sudo systemctl enable docker
 
