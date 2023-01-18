@@ -1,0 +1,30 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: kubernetes-dashboard
+  namespace: argocd
+  finalizers:
+  - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  source:
+    repoURL: 'https://kubernetes.github.io/dashboard'
+    targetRevision: 5.11.0
+    helm:
+      values: |
+        extraArgs:
+          #- --enable-insecure-login
+          #- --insecure-port=9090
+        service:
+          type: LoadBalancer
+          externalPort: 31443
+    chart: kubernetes-dashboard
+  destination:
+    server: 'https://kubernetes.default.svc'
+    namespace: kube-system
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
