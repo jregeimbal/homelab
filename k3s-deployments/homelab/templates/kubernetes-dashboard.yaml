@@ -18,6 +18,14 @@ spec:
         service:
           type: LoadBalancer
           externalPort: 31443
+        metrics-server:
+          enabled: true
+        metricsScraper:
+          enabled: true
+          image:
+            repository: kubernetesui/metrics-scraper
+            tag: v1.0.8
+          resources: {}
     chart: kubernetes-dashboard
   destination:
     server: 'https://kubernetes.default.svc'
