@@ -7,7 +7,7 @@ K3S_URL=$3        #EG: https://homelab-primary:6443
 K3S_TOKEN=$4      #EG: K10e12e687cc3bd959eb05f011addb1d5d05d454ba98015b576e12de62c12fc98dc::server:57f669d7737f97bfdd2db1d912b647b3
 
 # Set hostname
-echo "Changin hostname $OLD_HOSTNAME > $NEW_HOSTNAME"
+echo "Changing hostname $OLD_HOSTNAME > $NEW_HOSTNAME"
 sudo hostnamectl set-hostname $NEW_HOSTNAME
 sudo perl -i -p -e "s/$OLD_HOSTNAME/$NEW_HOSTNAME/g" /etc/hosts
 

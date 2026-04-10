@@ -8,7 +8,7 @@ DISK_DEVICE=$4    #/dev/sdb
 NCDATA_DIR=$3
 
 # Set hostname
-echo "Changin hostname $OLD_HOSTNAME > $NEW_HOSTNAME"
+echo "Changing hostname $OLD_HOSTNAME > $NEW_HOSTNAME"
 sudo hostnamectl set-hostname $NEW_HOSTNAME
 sudo perl -i -p -e "s/$OLD_HOSTNAME/$NEW_HOSTNAME/g" /etc/hosts
 

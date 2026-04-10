@@ -1,11 +1,11 @@
 set -u
 set -e
 
-OLD_HOSTNAME=$1   #https://github.com/armbian/community/releases/download/202249/Armbian_23.02.0-trunk_Pine64_kinetic_edge_6.0.10_minimal.img.xz
-NEW_HOSTNAME=$2   #/dev/disk2
+OLD_HOSTNAME=$1   #dietpi-primary
+NEW_HOSTNAME=$2   #dietpi-primary-new
 
 # Set hostname
-echo "Changin hostname $OLD_HOSTNAME > $NEW_HOSTNAME"
+echo "Changing hostname $OLD_HOSTNAME > $NEW_HOSTNAME"
 sudo hostnamectl set-hostname $NEW_HOSTNAME
 sudo perl -i -p -e "s/$OLD_HOSTNAME/$NEW_HOSTNAME/g" /etc/hosts
 
