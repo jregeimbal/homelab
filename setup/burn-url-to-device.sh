@@ -44,6 +44,8 @@ sed -i -e '/SURVEY_OPTED_IN=/ s/=.*/=0/' /Volumes/DIETPISETUP/dietpi.txt
 sed -i -e '/AUTO_SETUP_NET_WIFI_COUNTRY_CODE=/ s/=.*/=US/' /Volumes/DIETPISETUP/dietpi.txt
 sed -i -e '/AUTO_UNMASK_LOGIND=/ s/=.*/=1/' /Volumes/DIETPISETUP/dietpi.txt
 sed -i -e '/AUTO_SETUP_BROWSER_INDEX=/ s/=.*/=0/' /Volumes/DIETPISETUP/dietpi.txt
+sed -i -e '/AUTO_SETUP_INSTALL_SOFTWARE_ID=/ s/=.*/=58/' /Volumes/DIETPISETUP/dietpi.txt
+sed -i -e '/#AUTO_SETUP_INSTALL_SOFTWARE_ID=/ s/#AUTO_SETUP_INSTALL_SOFTWARE_ID=/AUTO_SETUP_INSTALL_SOFTWARE_ID=/' /Volumes/DIETPISETUP/dietpi.txt
 
 if [ -z "${EJECT_DEVICE:-}" ]; then
   read -p "Eject device [y/N]: " EJECT_DEVICE
