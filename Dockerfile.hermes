@@ -1,0 +1,7 @@
+FROM nousresearch/hermes-agent:main
+
+USER root
+
+RUN /opt/hermes/.venv/bin/python3 -m pip install discord.py python-telegram-bot
+
+USER 1000

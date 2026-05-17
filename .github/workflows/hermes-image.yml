@@ -1,0 +1,31 @@
+name: Build Hermes Agent Image
+
+on:
+  push:
+    paths:
+      - 'Dockerfile.hermes'
+      - '.github/workflows/hermes-image.yml'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Login to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: Dockerfile.hermes
+          platforms: linux/arm64
+          push: true
+          tags: ghcr.io/jonregeimbal/hermes-agent:discord-telegram
