@@ -1,8 +1,4 @@
 FROM nousresearch/hermes-agent:main
 
-USER root
-
-# Check what's available
-RUN which python3 && python3 --version && apt-get update && apt-get install -y --no-install-recommends python3-pip && python3 --version
-
-USER 1000
+# Install packages using venv python3
+RUN /opt/hermes/.venv/bin/python3 -m pip install discord.py python-telegram-bot
