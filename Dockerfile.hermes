@@ -2,10 +2,9 @@ FROM nousresearch/hermes-agent:main
 
 USER root
 
-# Bootstrap pip and install packages
+# Install packages using system python3
 RUN apt-get update && apt-get install -y --no-install-recommends python3-pip && \
-    /opt/hermes/.venv/bin/python3 -m ensurepip --upgrade && \
-    /opt/hermes/.venv/bin/pip install discord.py python-telegram-bot && \
+    python3 -m pip install --target=/opt/hermes/.venv/lib/python3.12/site-packages discord.py python-telegram-bot && \
     apt-get clean && rm -rf /var/lib/apt/lists/*
 
 USER 1000
