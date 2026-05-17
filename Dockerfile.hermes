@@ -2,9 +2,7 @@ FROM nousresearch/hermes-agent:main
 
 USER root
 
-# Install packages using system python3
-RUN apt-get update && apt-get install -y --no-install-recommends python3-pip && \
-    python3 -m pip install discord.py python-telegram-bot && \
-    apt-get clean && rm -rf /var/lib/apt/lists/*
+# Check what's available
+RUN which python3 && python3 --version && apt-get update && apt-get install -y --no-install-recommends python3-pip && python3 --version
 
 USER 1000
