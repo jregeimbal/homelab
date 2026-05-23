@@ -54,11 +54,12 @@ spec:
   interval: 5m
 ---
 apiVersion: source.toolkit.fluxcd.io/v1
-kind: HelmRepository
+kind: GitRepository
 metadata:
   name: hermes-agent
   namespace: flux-system
 spec:
-  type: git
   url: https://github.com/ultraworkers/hermes-agent-helm-chart
+  ref:
+    branch: main
   interval: 5m
