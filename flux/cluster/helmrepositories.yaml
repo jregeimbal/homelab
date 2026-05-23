@@ -1,5 +1,5 @@
 ---
-apiVersion: source.toolkit.fluxcd.io/v1beta2
+apiVersion: source.toolkit.fluxcd.io/v1
 kind: HelmRepository
 metadata:
   name: longhorn
@@ -8,7 +8,7 @@ spec:
   url: https://charts.longhorn.io
   interval: 5m
 ---
-apiVersion: source.toolkit.fluxcd.io/v1beta2
+apiVersion: source.toolkit.fluxcd.io/v1
 kind: HelmRepository
 metadata:
   name: metallb
@@ -17,7 +17,7 @@ spec:
   url: https://metallb.github.io/metallb
   interval: 5m
 ---
-apiVersion: source.toolkit.fluxcd.io/v1beta2
+apiVersion: source.toolkit.fluxcd.io/v1
 kind: HelmRepository
 metadata:
   name: bitnami
@@ -26,7 +26,7 @@ spec:
   url: https://charts.bitnami.com/bitnami
   interval: 5m
 ---
-apiVersion: source.toolkit.fluxcd.io/v1beta2
+apiVersion: source.toolkit.fluxcd.io/v1
 kind: HelmRepository
 metadata:
   name: prometheus-community
@@ -35,7 +35,7 @@ spec:
   url: https://prometheus-community.github.io/helm-charts
   interval: 5m
 ---
-apiVersion: source.toolkit.fluxcd.io/v1beta2
+apiVersion: source.toolkit.fluxcd.io/v1
 kind: HelmRepository
 metadata:
   name: grafana
@@ -44,7 +44,7 @@ spec:
   url: https://grafana.github.io/helm-charts
   interval: 5m
 ---
-apiVersion: source.toolkit.fluxcd.io/v1beta2
+apiVersion: source.toolkit.fluxcd.io/v1
 kind: HelmRepository
 metadata:
   name: openwebui
@@ -53,7 +53,7 @@ spec:
   url: https://open-webui.github.io/helm-charts
   interval: 5m
 ---
-apiVersion: source.toolkit.fluxcd.io/v1beta2
+apiVersion: source.toolkit.fluxcd.io/v1
 kind: HelmRepository
 metadata:
   name: hermes-agent
