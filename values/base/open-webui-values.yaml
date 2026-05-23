@@ -1,0 +1,18 @@
+---
+# values/base/open-webui-values.yaml
+replicaCount: 1
+image:
+  repository: ghcr.io/open-webui/open-webui
+  tag: main
+service:
+  type: LoadBalancer
+  ports:
+    - port: 80
+      targetPort: 8080
+persistence:
+  enabled: true
+  size: 10Gi
+  storageClass: longhorn
+env:
+  OLLAMA_BASE_URL: "http://hermes-agent.jon-agent.svc.cluster.local:5000"
+  WEBUI_SECRET_KEY: "changeme-in-production"

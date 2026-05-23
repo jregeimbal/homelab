@@ -1,0 +1,28 @@
+---
+# values/base/monitoring-values.yaml
+prometheus:
+  prometheus:
+    storageSpec:
+      volumeClaimTemplate:
+        spec:
+          storageClassName: longhorn
+          resources:
+            requests:
+              storage: 20Gi
+    service:
+      type: ClusterIP
+
+grafana:
+  persistence:
+    enabled: true
+    storageClassName: longhorn
+    size: 5Gi
+  service:
+    type: LoadBalancer
+  adminPassword: "changeme"
+  sidecar:
+    datasources:
+      enabled: true
+      datasources:
+        prometheus:
+          url: "http://prometheus-server.monitoring.svc.cluster.local"
