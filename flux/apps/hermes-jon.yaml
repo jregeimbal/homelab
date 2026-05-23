@@ -1,0 +1,37 @@
+---
+apiVersion: source.toolkit.fluxcd.io/v1
+kind: HelmChart
+metadata:
+  name: hermes-agent
+  namespace: flux-system
+spec:
+  chart: hermes-agent
+  version: "0.1.0"
+  sourceRef:
+    kind: GitRepository
+    name: hermes-agent
+    namespace: flux-system
+  interval: 5m
+  path: ./charts
+---
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: hermes
+  namespace: jon-agent
+spec:
+  interval: 5m
+  chartRef:
+    kind: HelmChart
+    name: hermes-agent
+    namespace: flux-system
+  releaseName: hermes
+  targetNamespace: jon-agent
+  valuesFile: ../../values/base/hermes-jon-values.yaml
+  install:
+    remediation:
+      retries: 3
+  upgrade:
+    cleanupOnFail: true
+    remediation:
+      retries: 3
