@@ -18,59 +18,14 @@ spec:
   releaseName: prometheus
   targetNamespace: monitoring
   values:
-    prometheus:
-      prometheus:
-        storageSpec:
-          volumeClaimTemplate:
-            spec:
-              storageClassName: longhorn
-              resources:
-                requests:
-                  storage: 20Gi
-        service:
-          type: ClusterIP
-  install:
-    remediation:
-      retries: 3
-  upgrade:
-    cleanupOnFail: true
-    remediation:
-      retries: 3
----
-apiVersion: helm.toolkit.fluxcd.io/v2
-kind: HelmRelease
-metadata:
-  name: grafana
-  namespace: monitoring
-spec:
-  interval: 5m
-  chart:
-    spec:
-      chart: grafana
-      version: "10.5.15"
-      sourceRef:
-        kind: HelmRepository
-        name: grafana
-        namespace: flux-system
-      interval: 5m
-  releaseName: grafana
-  targetNamespace: monitoring
-  values:
-    persistence:
-      enabled: true
-      storageClassName: longhorn
-      size: 5Gi
-    service:
-      type: LoadBalancer
-    adminPassword: "changeme"
-    sidecar:
-      datasources:
-        enabled: true
-        datasources:
-          prometheus:
-            url: "http://prometheus-server.monitoring.svc.cluster.local"
-  dependsOn:
-    - name: prometheus
+    server:
+      storage:
+        volumeClaimTemplate:
+          spec:
+            storageClassName: longhorn
+            resources:
+              requests:
+                storage: 5Gi
   install:
     remediation:
       retries: 3
