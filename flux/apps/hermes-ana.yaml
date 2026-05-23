@@ -2,8 +2,8 @@
 apiVersion: helm.toolkit.fluxcd.io/v2
 kind: HelmRelease
 metadata:
-  name: hermes
-  namespace: jon-agent
+  name: hermes-ana
+  namespace: ana-agent
 spec:
   interval: 5m
   chart:
@@ -15,29 +15,49 @@ spec:
         name: hermes-agent
         namespace: flux-system
       interval: 5m
-  releaseName: hermes
-  targetNamespace: jon-agent
+  releaseName: hermes-ana
+  targetNamespace: ana-agent
   values:
     apiServer:
       enabled: true
     config:
       values:
+        agent:
+          gateway_timeout: 1800
+          max_turns: 90
+          restart_drain_timeout: 60
+          tool_use_enforcement: auto
+        browser:
+          allow_private_urls: false
+          command_timeout: 30
+          inactivity_timeout: 120
+        compression:
+          enabled: true
+          protect_last_n: 20
+          target_ratio: 0.2
+          threshold: 0.5
+        display:
+          interim_assistant_messages: true
+          tool_progress: all
         model:
           base_url: https://openrouter.ai/api/v1
           default: qwen/qwen3.6-35b-a3b
           provider: auto
+        security:
+          redact_secrets: true
+          tirith_enabled: true
+          tirith_fail_open: true
+        terminal:
+          backend: local
+          cwd: .
+          timeout: 180
         whatsapp:
           reply_prefix: "*Jon R Claw*\n──────\n"
     env:
-      DISCORD_ALLOWED_USERS: "808110923713216522"
-      DISCORD_HOME_CHANNEL: "1490811659214913698"
-      GATEWAY_ALLOW_ALL_USERS: "false"
+      GATEWAY_ALLOW_ALL_USERS: "true"
       HERMES_GATEWAY_PLATFORM_CONNECT_TIMEOUT: "90"
       PYTHONPATH: /opt/data/py-global
-      TELEGRAM_ALLOWED_USERS: "8238305614"
-      TELEGRAM_HOME_CHANNEL: "-1003912742246"
-      WHATSAPP_ALLOWED_USERS: "15409075116"
-      WHATSAPP_DEBUG: "true"
+      WHATSAPP_ALLOWED_USERS: "15404194480"
       WHATSAPP_ENABLED: "true"
       WHATSAPP_MODE: self-chat
     extraInitContainers:
@@ -73,7 +93,8 @@ spec:
     extraVolumes:
       - name: whatsapp-scripts
         persistentVolumeClaim:
-          claimName: hermes-hermes-agent-data
+          claimName: hermes-ana-data
+    fullnameOverride: hermes-ana
     image:
       tag: main
     persistence:
