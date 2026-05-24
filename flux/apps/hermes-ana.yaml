@@ -8,9 +8,8 @@ spec:
   interval: 5m
   chart:
     spec:
-      chart: hermes-agent
+      chart: .
       version: "0.1.0"
-      path: .
       sourceRef:
         kind: GitRepository
         name: hermes-agent
