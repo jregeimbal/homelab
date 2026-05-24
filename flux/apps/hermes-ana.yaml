@@ -56,12 +56,38 @@ spec:
         whatsapp:
           reply_prefix: "*Jon R Claw*\n──────\n"
     env:
+      BROWSER_CDP_URL: ws://127.0.0.1:3000/
       GATEWAY_ALLOW_ALL_USERS: "true"
       HERMES_GATEWAY_PLATFORM_CONNECT_TIMEOUT: "90"
       PYTHONPATH: /opt/data/py-global
       WHATSAPP_ALLOWED_USERS: "15404194480"
       WHATSAPP_ENABLED: "true"
       WHATSAPP_MODE: self-chat
+    extraContainers:
+      - image: ghcr.io/browserless/chromium:latest
+        imagePullPolicy: Always
+        name: browserless-chromium
+        ports:
+          - containerPort: 3000
+            name: cdp
+            protocol: TCP
+          - containerPort: 8080
+            name: http
+            protocol: TCP
+        resources:
+          limits:
+            cpu: "2"
+            memory: 4Gi
+          requests:
+            cpu: 500m
+            memory: 2Gi
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+              - ALL
+          seccompProfile:
+            type: RuntimeDefault
     extraInitContainers:
       - args:
           - |
