@@ -1,5 +1,7 @@
 apiServer:
   enabled: true
+secrets:
+  API_SERVER_KEY: dHVydGxlLWZyZW5jaC1jaGVlc2Utb2N0b3B1cy0xMzY3
 config:
   values:
     model:
@@ -7,7 +9,7 @@ config:
       default: qwen/qwen3.6-35b-a3b
       provider: auto
     whatsapp:
-      reply_prefix: "\U0001F916 *Jon R Claw*\n──────\n"
+      reply_prefix: "*Jon R Claw*\n──────\n"
 env:
   DISCORD_ALLOWED_USERS: "808110923713216522"
   DISCORD_HOME_CHANNEL: "1490811659214913698"
