@@ -20,6 +20,8 @@ spec:
   values:
     apiServer:
       enabled: true
+    secrets:
+      API_SERVER_KEY: dHVydGxlLWZyZW5jaC1jaGVlc2Utb2N0b3B1cy0xMzY3
     config:
       values:
         agent:
