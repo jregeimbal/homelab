@@ -1,9 +1,0 @@
----
-server:
-  storage:
-    volumeClaimTemplate:
-      spec:
-        storageClassName: longhorn
-        resources:
-          requests:
-            storage: 5Gi
