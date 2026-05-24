@@ -4,3 +4,4 @@ resources:
   - longhorn.yaml
   - metallb.yaml
   - tailscale.yaml
+  - tailscale-connector.yaml
