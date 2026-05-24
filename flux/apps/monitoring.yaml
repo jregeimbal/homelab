@@ -66,16 +66,12 @@ spec:
       ports:
         - port: 80
           targetPort: 3000
-    sidecar:
-      datasources:
-        enabled: true
-        datasources:
-          prometheus:
-            name: prometheus
-            type: prometheus
-            url: http://prometheus-server.monitoring.svc.cluster.local
-            access: proxy
-            isDefault: true
+    additionalDataSources:
+      - name: prometheus
+        type: prometheus
+        url: http://prometheus-server.monitoring.svc.cluster.local
+        access: proxy
+        isDefault: true
     fullnameOverride: grafana
   install:
     remediation:
