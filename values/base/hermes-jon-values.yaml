@@ -9,7 +9,7 @@ config:
       default: qwen/qwen3.6-35b-a3b
       provider: auto
     whatsapp:
-      reply_prefix: "*Jon R Claw*\n──────\n"
+      reply_prefix: "\U0001F916 *Jon R Claw*\n──────\n"
 env:
   DISCORD_ALLOWED_USERS: "808110923713216522"
   DISCORD_HOME_CHANNEL: "1490811659214913698"
