@@ -55,28 +55,27 @@ spec:
   dependsOn:
     - name: prometheus
   values:
-    grafana:
-      adminPassword: admin
-      persistence:
+    adminPassword: admin
+    persistence:
+      enabled: true
+      storageClassName: longhorn
+      size: 5Gi
+    service:
+      type: LoadBalancer
+      loadBalancerClass: tailscale
+      ports:
+        - port: 80
+          targetPort: 3000
+    sidecar:
+      datasources:
         enabled: true
-        storageClassName: longhorn
-        size: 5Gi
-      service:
-        type: LoadBalancer
-        loadBalancerClass: tailscale
-        ports:
-          - port: 80
-            targetPort: 3000
-      sidecar:
         datasources:
-          enabled: true
-          datasources:
-            prometheus:
-              name: prometheus
-              type: prometheus
-              url: http://prometheus-server.monitoring.svc.cluster.local
-              access: proxy
-              isDefault: true
+          prometheus:
+            name: prometheus
+            type: prometheus
+            url: http://prometheus-server.monitoring.svc.cluster.local
+            access: proxy
+            isDefault: true
     fullnameOverride: grafana
   install:
     remediation:
