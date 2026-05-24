@@ -5,3 +5,4 @@ resources:
   - metallb.yaml
   - tailscale.yaml
   - tailscale-connector.yaml
+  - longhorn-tailscale.yaml
