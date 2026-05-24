@@ -17,15 +17,7 @@ spec:
       interval: 5m
   releaseName: prometheus
   targetNamespace: monitoring
-  values:
-    server:
-      storage:
-        volumeClaimTemplate:
-          spec:
-            storageClassName: longhorn
-            resources:
-              requests:
-                storage: 5Gi
+  valuesFile: ../../values/base/monitoring-values.yaml
   install:
     remediation:
       retries: 3
