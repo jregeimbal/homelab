@@ -34,7 +34,7 @@ config:
       cwd: .
       timeout: 180
     whatsapp:
-      reply_prefix: "\U0001F916 *Jon R Claw*\n──────\n"
+      reply_prefix: "\U0001F916 *Ana's Agent*\n──────\n"
 env:
   BROWSER_CDP_URL: ws://127.0.0.1:3000/
   GATEWAY_ALLOW_ALL_USERS: "true"
