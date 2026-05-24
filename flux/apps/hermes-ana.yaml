@@ -10,6 +10,7 @@ spec:
     spec:
       chart: hermes-agent
       version: "0.1.0"
+      path: .
       sourceRef:
         kind: GitRepository
         name: hermes-agent
