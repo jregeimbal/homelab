@@ -7,5 +7,5 @@ resources:
   - open-webui.yaml
   - open-webui-secret.sealedsecret.yaml
   - open-webui-hermes-openai.sealedsecret.yaml
-  - hermes-discord-secrets.sealedsecret.yaml
+  - hermes-jon-secrets.sealedsecret.yaml
   - monitoring.yaml

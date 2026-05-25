@@ -21,7 +21,7 @@ spec:
     apiServer:
       enabled: true
     secrets:
-      existingSecret: hermes-discord-secrets
+      existingSecret: hermes-jon-secrets
     config:
       values:
         model:
