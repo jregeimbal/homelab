@@ -4,5 +4,5 @@ resources:
   - ../../secrets/encrypted/sealed-secrets-crd.yaml
   - helmrepositories.yaml
   - namespaces.yaml
+  - apps-kustomization.yaml
   - ../../flux/infra/
-  - ../../flux/apps/
