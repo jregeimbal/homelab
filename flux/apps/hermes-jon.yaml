@@ -24,13 +24,34 @@ spec:
       existingSecret: hermes-jon-secrets
     config:
       values:
+        agent:
+          gateway_timeout: 1800
+          max_turns: 90
+          restart_drain_timeout: 60
+          tool_use_enforcement: true
+        browser:
+          allow_private_urls: false
+          command_timeout: 60
+          inactivity_timeout: 120
+        display:
+          interim_assistant_messages: true
+          tool_progress: all
         model:
           base_url: http://jons-macbook-pro:1234/v1
           default: qwen/qwen3.6-35b-a3b
           provider: auto
+        security:
+          redact_secrets: true
+          tirith_enabled: true
+          tirith_fail_open: true
+        terminal:
+          backend: local
+          cwd: .
+          timeout: 180
         whatsapp:
           reply_prefix: "\U0001F916 *Jon R Claw*\n──────\n"
     env:
+      BROWSER_CDP_URL: ws://127.0.0.1:3000/
       DISCORD_ALLOWED_USERS: "808110923713216522"
       DISCORD_HOME_CHANNEL: "1490811659214913698"
       GATEWAY_ALLOW_ALL_USERS: "false"
@@ -42,6 +63,31 @@ spec:
       WHATSAPP_DEBUG: "true"
       WHATSAPP_ENABLED: "true"
       WHATSAPP_MODE: self-chat
+    extraContainers:
+      - image: ghcr.io/browserless/chromium:latest
+        imagePullPolicy: Always
+        name: browserless-chromium
+        ports:
+          - containerPort: 3000
+            name: cdp
+            protocol: TCP
+          - containerPort: 8080
+            name: http
+            protocol: TCP
+        resources:
+          limits:
+            cpu: "2"
+            memory: 4Gi
+          requests:
+            cpu: 500m
+            memory: 2Gi
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+              - ALL
+          seccompProfile:
+            type: RuntimeDefault
     extraInitContainers:
       - args:
           - |

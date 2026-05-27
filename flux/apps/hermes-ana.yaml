@@ -28,16 +28,11 @@ spec:
           gateway_timeout: 1800
           max_turns: 90
           restart_drain_timeout: 60
-          tool_use_enforcement: auto
+          tool_use_enforcement: true
         browser:
           allow_private_urls: false
-          command_timeout: 30
+          command_timeout: 60
           inactivity_timeout: 120
-        compression:
-          enabled: true
-          protect_last_n: 20
-          target_ratio: 0.2
-          threshold: 0.5
         display:
           interim_assistant_messages: true
           tool_progress: all
@@ -57,7 +52,7 @@ spec:
           reply_prefix: "\U0001F916 *Ana's Agent*\n──────\n"
     env:
       BROWSER_CDP_URL: ws://127.0.0.1:3000/
-      GATEWAY_ALLOW_ALL_USERS: "true"
+      GATEWAY_ALLOW_ALL_USERS: "false"
       HERMES_GATEWAY_PLATFORM_CONNECT_TIMEOUT: "90"
       PYTHONPATH: /opt/data/py-global
       WHATSAPP_ALLOWED_USERS: "15404194480"
