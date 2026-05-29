@@ -44,6 +44,8 @@ spec:
           redact_secrets: true
           tirith_enabled: true
           tirith_fail_open: true
+        stt:
+          enabled: true
         terminal:
           backend: local
           cwd: .
@@ -101,6 +103,11 @@ spec:
             if [ ! -d "$PYGLOBAL/telegram" ]; then
               curl -sS https://bootstrap.pypa.io/get-pip.py -o /tmp/get-pip.py
               /usr/bin/python3 /tmp/get-pip.py --target "$PYGLOBAL" python-telegram-bot
+              rm -rf /tmp/get-pip.py
+            fi
+            if [ ! -d "$PYGLOBAL/faster-whisper" ]; then
+              curl -sS https://bootstrap.pypa.io/get-pip.py -o /tmp/get-pip.py
+              /usr/bin/python3 /tmp/get-pip.py --target "$PYGLOBAL" faster-whisper
               rm -rf /tmp/get-pip.py
             fi
         command:
