@@ -37,7 +37,7 @@ spec:
     pipelines:
       enabled: false
     openaiBaseApiUrl: http://hermes-hermes-agent.jon-agent.svc.cluster.local:8642/v1
-    openaiApiKeyExistingSecret: open-webui-secret
+    openaiApiKeyExistingSecret: open-webui-hermes-openai
     openaiApiKeyExistingSecretKey: api-key
     extraEnvFrom:
       - secretRef:
