@@ -26,6 +26,12 @@ spec:
             resources:
               requests:
                 storage: 5Gi
+    prometheus-node-exporter:
+      tolerations:
+        - key: "node-role.kubernetes.io/control-plane"
+          operator: "Equal"
+          value: "NoSchedule"
+          effect: "NoSchedule"
   install:
     remediation:
       retries: 3
