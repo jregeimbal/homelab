@@ -8,4 +8,5 @@ resources:
   - open-webui-secret.sealedsecret.yaml
   - open-webui-hermes-openai.sealedsecret.yaml
   - hermes-jon-secrets.sealedsecret.yaml
+  - hermes-ana-secrets.sealedsecret.yaml
   - monitoring.yaml
