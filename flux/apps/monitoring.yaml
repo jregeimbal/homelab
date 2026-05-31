@@ -29,8 +29,7 @@ spec:
     prometheus-node-exporter:
       tolerations:
         - key: "node-role.kubernetes.io/control-plane"
-          operator: "Equal"
-          value: "NoSchedule"
+          operator: "Exists"
           effect: "NoSchedule"
   install:
     remediation:
