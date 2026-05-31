@@ -125,6 +125,7 @@ SealedSecrets allows encrypted secrets to be safely committed to Git. The Sealed
 | SealedSecret                              | Namespace   | Contents                          |
 |-------------------------------------------|-------------|-----------------------------------|
 | hermes-jon-secrets.sealedsecret.yaml      | jon-agent   | API key, HF token, OpenRouter, Telegram |
+| hermes-ana-secrets.sealedsecret.yaml      | ana-agent   | API server key                    |
 | open-webui-secret.sealedsecret.yaml       | open-webui  | Open WebUI secrets                |
 | open-webui-hermes-openai.sealedsecret.yaml| open-webui  | API key for Hermes backend        |
 

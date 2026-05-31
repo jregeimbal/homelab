@@ -68,7 +68,7 @@ Referenced from `hermes-jon-secrets` SealedSecret. Contains:
 ### Key Differences from jon-agent
 
 - **No Discord or Telegram** — only WhatsApp integration (`"15404194480"`)
-- **No SealedSecret** — API key is inlined as base64 in `secrets.API_SERVER_KEY` within `hermes-ana.yaml`
+- **SealedSecret:** `hermes-ana-secrets` (API server key)
 - **WhatsApp reply prefix:** `"🤖 *Ana's Agent*\n──────\n"`
 - **No pip-install init container for telegram** — only installs `discord.py` and `faster-whisper` (telegram package not needed)
 - **Data volume claim name:** `hermes-ana-data` (vs `hermes-hermes-agent-data` for jon)

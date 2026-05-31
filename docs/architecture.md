@@ -207,6 +207,7 @@ flux/
     ├── hermes-jon.yaml         # Hermes agent (jon)
     ├── hermes-ana.yaml         # Hermes agent (ana)
     ├── hermes-jon-secrets.sealedsecret.yaml
+    ├── hermes-ana-secrets.sealedsecret.yaml
     ├── hermes-jon-tailscale.yaml
     ├── open-webui.yaml         # Open WebUI
     ├── open-webui-secret.sealedsecret.yaml
