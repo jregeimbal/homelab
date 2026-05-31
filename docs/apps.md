@@ -101,14 +101,13 @@ All other components match the jon-agent configuration:
 ### API Configuration
 
 - **OpenAI API URL:** `http://hermes-hermes-agent.jon-agent.svc.cluster.local:8642/v1`
-- **API key:** from `open-webui-hermes-openai` SealedSecret
+- **API key:** from `open-webui-secret` SealedSecret
 - **Ollama:** disabled
 - **Pipelines:** disabled
 
 ### Secrets
 
-- `open-webui-secret` — General Open WebUI secrets
-- `open-webui-hermes-openai` — API key for Hermes backend
+- `open-webui-secret` — General Open WebUI secrets and Hermes API key
 
 ---
 

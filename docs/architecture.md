@@ -210,6 +210,5 @@ flux/
     ├── hermes-ana-secrets.sealedsecret.yaml
     ├── hermes-jon-tailscale.yaml
     ├── open-webui.yaml         # Open WebUI
-    ├── open-webui-secret.sealedsecret.yaml
-    └── open-webui-hermes-openai.sealedsecret.yaml
+    └── open-webui-secret.sealedsecret.yaml
 ```
