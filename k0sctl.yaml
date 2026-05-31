@@ -8,7 +8,7 @@ spec:
         address: homelab-soquartz-1
         user: dietpi
         port: 22
-      role: controller
+      role: controller+worker
     - ssh:
         address: homelab-soquartz-2
         user: dietpi
