@@ -118,8 +118,8 @@ spec:
         command:
           - /bin/sh
           - -ec
-        image: nousresearch/hermes-agent:main
-        imagePullPolicy: Always
+        image: nousresearch/hermes-agent:v2026.5.29.2
+        imagePullPolicy: IfNotPresent
         name: pip-install
         securityContext:
           allowPrivilegeEscalation: false
@@ -129,20 +129,22 @@ spec:
           readOnlyRootFilesystem: true
           seccompProfile:
             type: RuntimeDefault
+          runAsUser: 1000
+          runAsGroup: 1000
         volumeMounts:
           - mountPath: /opt/data
             name: data
           - mountPath: /tmp
             name: tmp
     extraVolumeMounts:
-      - mountPath: /opt/hermes/scripts
-        name: whatsapp-scripts
+      - mountPath: /run
+        name: run-tmp
     extraVolumes:
-      - name: whatsapp-scripts
-        persistentVolumeClaim:
-          claimName: hermes-hermes-agent-data
+      - name: run-tmp
+        emptyDir: {}
     image:
-      tag: main
+      tag: v2026.5.29.2
+      pullPolicy: IfNotPresent
     persistence:
       enabled: true
       size: 5Gi
