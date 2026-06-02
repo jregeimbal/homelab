@@ -61,7 +61,7 @@ metadata:
 spec:
   url: https://github.com/ultraworkers/hermes-agent-helm-chart
   ref:
-    branch: main
+    commit: e3b685d4d0288668a37216435742cd0a659ebc6c
   interval: 5m
 ---
 apiVersion: source.toolkit.fluxcd.io/v1
