@@ -136,6 +136,9 @@ spec:
             name: data
           - mountPath: /tmp
             name: tmp
+    extraVolumeMounts:
+      - mountPath: /run
+        name: run-tmp
     image:
       tag: v2026.5.29.2
       pullPolicy: IfNotPresent
@@ -161,6 +164,9 @@ spec:
       enabled: true
       size: 5Gi
       storageClass: longhorn
+    extraVolumes:
+      - name: run-tmp
+        emptyDir: {}
     service:
       enabled: true
       ports:
