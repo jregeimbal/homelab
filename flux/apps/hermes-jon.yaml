@@ -94,6 +94,28 @@ spec:
       - args:
           - |
             set -eu
+            chown -R 10000:10000 /opt/data
+        command:
+          - /bin/sh
+          - -ec
+        image: nousresearch/hermes-agent:v2026.5.29.2
+        imagePullPolicy: IfNotPresent
+        name: fix-data-ownership
+        securityContext:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
+          runAsUser: 0
+          runAsGroup: 0
+          seccompProfile:
+            type: RuntimeDefault
+        volumeMounts:
+          - mountPath: /opt/data
+            name: data
+          - mountPath: /tmp
+            name: tmp
+      - args:
+          - |
+            set -eu
             PYGLOBAL=/opt/data/py-global
             if [ ! -d "$PYGLOBAL/discord" ]; then
               curl -sS https://bootstrap.pypa.io/get-pip.py -o /tmp/get-pip.py
