@@ -201,3 +201,14 @@ spec:
     cleanupOnFail: true
     remediation:
       retries: 3
+  postRenderers:
+    - kustomize:
+        patches:
+          - target:
+              group: apps
+              version: v1
+              kind: Deployment
+              name: hermes-hermes-agent
+            patch: |
+              - op: remove
+                path: /spec/template/spec/containers/0/securityContext/capabilities
