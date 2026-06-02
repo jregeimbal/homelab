@@ -152,9 +152,6 @@ spec:
         type: RuntimeDefault
     securityContext:
       allowPrivilegeEscalation: false
-      capabilities:
-        drop:
-          - ALL
       readOnlyRootFilesystem: true
       runAsUser: 0
       runAsGroup: 0
