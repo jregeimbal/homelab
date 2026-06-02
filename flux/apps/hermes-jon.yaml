@@ -114,7 +114,7 @@ spec:
           - /bin/sh
           - -ec
         image: nousresearch/hermes-agent:main
-        imagePullPolicy: IfNotPresent
+        imagePullPolicy: Always
         name: pip-install
         securityContext:
           allowPrivilegeEscalation: false
@@ -124,8 +124,6 @@ spec:
           readOnlyRootFilesystem: true
           seccompProfile:
             type: RuntimeDefault
-          runAsUser: 1000
-          runAsGroup: 1000
         volumeMounts:
           - mountPath: /opt/data
             name: data
