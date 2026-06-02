@@ -143,6 +143,8 @@ spec:
       fsGroup: 1000
       fsGroupChangePolicy: OnRootMismatch
       runAsGroup: 1000
+      runAsNonRoot: false
+      runAsUser: 0
       seccompProfile:
         type: RuntimeDefault
     securityContext:
