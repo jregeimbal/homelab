@@ -91,6 +91,25 @@ spec:
               - ALL
           seccompProfile:
             type: RuntimeDefault
+      - image: ghcr.io/nesquena/hermes-webui:latest
+        imagePullPolicy: Always
+        name: hermes-webui
+        ports:
+          - containerPort: 8787
+            name: webui
+            protocol: TCP
+        env:
+          - name: WANTED_UID
+            value: "1000"
+          - name: WANTED_GID
+            value: "1000"
+          - name: HERMES_WEBUI_HOST
+            value: "0.0.0.0"
+        volumeMounts:
+          - name: data
+            mountPath: /home/hermeswebui/.hermes
+          - name: data
+            mountPath: /workspace
     extraInitContainers:
       - args:
           - |
@@ -195,6 +214,11 @@ spec:
           port: 8642
           protocol: TCP
           targetPort: 8642
+        - containerPort: 8787
+          name: webui
+          port: 8787
+          protocol: TCP
+          targetPort: 8787
   install:
     remediation:
       retries: 3
