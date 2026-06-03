@@ -122,8 +122,6 @@ spec:
         volumeMounts:
           - name: data
             mountPath: /home/hermeswebui/.hermes
-          - name: data
-            mountPath: /workspace
     extraInitContainers:
       - args:
           - |
@@ -233,6 +231,7 @@ spec:
           port: 8787
           protocol: TCP
           targetPort: 8787
+  timeout: 15m
   install:
     remediation:
       retries: 3

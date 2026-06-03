@@ -14,3 +14,6 @@ spec:
     - name: api-server
       port: 8642
       targetPort: 8642
+    - name: webui
+      port: 8787
+      targetPort: 8787
