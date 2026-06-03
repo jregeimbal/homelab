@@ -99,12 +99,30 @@ spec:
             name: webui
             protocol: TCP
         env:
-          - name: WANTED_UID
-            value: "0"
-          - name: WANTED_GID
-            value: "0"
           - name: HERMES_WEBUI_HOST
             value: "0.0.0.0"
+          - name: HERMES_WEBUI_PORT
+            value: "8787"
+          - name: HERMES_WEBUI_CHAT_BACKEND
+            value: gateway
+          - name: HERMES_WEBUI_GATEWAY_BASE_URL
+            value: http://hermes-hermes-agent.jon-agent.svc.cluster.local:8642
+          - name: HERMES_WEBUI_GATEWAY_API_KEY
+            valueFrom:
+              secretKeyRef:
+                name: hermes-jon-secrets
+                key: API_SERVER_KEY
+          - name: HERMES_WEBUI_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                name: hermes-webui-password
+                key: password
+          - name: HERMES_WEBUI_STATE_DIR
+            value: /home/hermeswebui/.hermes/webui
+          - name: WANTED_UID
+            value: "1024"
+          - name: WANTED_GID
+            value: "1024"
         resources:
           limits:
             cpu: "1"
@@ -121,6 +139,8 @@ spec:
             type: RuntimeDefault
         volumeMounts:
           - name: data
+            mountPath: /home/hermeswebui/.hermes
+          - name: workspace
             mountPath: /workspace
     extraInitContainers:
       - args:
@@ -193,6 +213,10 @@ spec:
     extraVolumeMounts:
       - mountPath: /run
         name: run-tmp
+    extraVolumes:
+      - name: workspace
+        persistentVolumeClaim:
+          claimName: hermes-webui-workspace
     image:
       tag: v2026.5.29.2
       pullPolicy: IfNotPresent
