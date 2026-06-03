@@ -3,6 +3,8 @@ kind: Kustomization
 resources:
   - hermes-jon.yaml
   - hermes-jon-tailscale.yaml
+  - hermes-webui-password.sealedsecret.yaml
+  - hermes-webui-workspace-pvc.yaml
   - hermes-ana.yaml
   - open-webui.yaml
   - open-webui-secret.sealedsecret.yaml

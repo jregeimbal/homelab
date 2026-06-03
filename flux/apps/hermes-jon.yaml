@@ -213,10 +213,6 @@ spec:
     extraVolumeMounts:
       - mountPath: /run
         name: run-tmp
-    extraVolumes:
-      - name: workspace
-        persistentVolumeClaim:
-          claimName: hermes-webui-workspace
     image:
       tag: v2026.5.29.2
       pullPolicy: IfNotPresent
@@ -242,6 +238,9 @@ spec:
     extraVolumes:
       - name: run-tmp
         emptyDir: {}
+      - name: workspace
+        persistentVolumeClaim:
+          claimName: hermes-webui-workspace
     service:
       enabled: true
       ports:
