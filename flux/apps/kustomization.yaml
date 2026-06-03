@@ -4,7 +4,6 @@ resources:
   - hermes-jon.yaml
   - hermes-jon-tailscale.yaml
   - hermes-webui-password.sealedsecret.yaml
-  - hermes-webui-state-pvc.yaml
   - hermes-webui-workspace-pvc.yaml
   - hermes-ana.yaml
   - open-webui.yaml
