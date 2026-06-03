@@ -118,7 +118,7 @@ spec:
                 name: hermes-webui-password
                 key: password
           - name: HERMES_WEBUI_STATE_DIR
-            value: /home/hermeswebui/.hermes/webui
+            value: /hermeswebui-data/webui
           - name: WANTED_UID
             value: "10000"
           - name: WANTED_GID
@@ -139,7 +139,7 @@ spec:
             type: RuntimeDefault
         volumeMounts:
           - name: webui-state
-            mountPath: /home/hermeswebui/.hermes
+            mountPath: /hermeswebui-data
           - name: workspace
             mountPath: /workspace
     extraInitContainers:
