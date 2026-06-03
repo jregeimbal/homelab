@@ -138,7 +138,7 @@ spec:
           seccompProfile:
             type: RuntimeDefault
         volumeMounts:
-          - name: data
+          - name: webui-state
             mountPath: /home/hermeswebui/.hermes
           - name: workspace
             mountPath: /workspace
@@ -241,6 +241,9 @@ spec:
       - name: workspace
         persistentVolumeClaim:
           claimName: hermes-webui-workspace
+      - name: webui-state
+        persistentVolumeClaim:
+          claimName: hermes-webui-state
     service:
       enabled: true
       ports:
