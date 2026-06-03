@@ -58,6 +58,7 @@ spec:
       DISCORD_HOME_CHANNEL: "1490811659214913698"
       GATEWAY_ALLOW_ALL_USERS: "false"
       HERMES_GATEWAY_PLATFORM_CONNECT_TIMEOUT: "90"
+      PATH: /root/.local/bin:/opt/hermes/.venv/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
       PYTHONPATH: /opt/data/py-global
       TELEGRAM_ALLOWED_USERS: "8238305614"
       TELEGRAM_HOME_CHANNEL: "-1003912742246"
