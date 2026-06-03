@@ -121,7 +121,7 @@ spec:
             type: RuntimeDefault
         volumeMounts:
           - name: data
-            mountPath: /home/hermeswebui/.hermes
+            mountPath: /workspace
     extraInitContainers:
       - args:
           - |
