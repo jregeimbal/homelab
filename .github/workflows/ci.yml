@@ -6,13 +6,21 @@ on:
   push:
     branches: [main]
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+defaults:
+  run:
+    shell: bash
+
 jobs:
   yaml-lint:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 2
+          fetch-depth: 0
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -32,7 +40,13 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 2
+          fetch-depth: 0
+
+      - name: Cache kubeconform
+        uses: actions/cache@v4
+        with:
+          path: /usr/local/bin/kubeconform
+          key: kubeconform-v0.7.0-${{ runner.os }}
 
       - name: Install kubeconform
         run: |
@@ -42,14 +56,20 @@ jobs:
         run: |
           kubeconform -summary -ignore-missing-schemas \
             -schema-location "https://raw.githubusercontent.com/datreeio/CRDs-catalog/main/" \
-            $(git ls-files 'flux/**/*.yaml')
+            $(git ls-files 'flux/**/*.yaml' 'k0sctl.yaml')
 
   secret-scanning:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 2
+          fetch-depth: 0
+
+      - name: Cache gitleaks
+        uses: actions/cache@v4
+        with:
+          path: /usr/local/bin/gitleaks
+          key: gitleaks-v8.30.1-${{ runner.os }}
 
       - name: Install gitleaks
         run: |
@@ -57,14 +77,14 @@ jobs:
 
       - name: Secret scanning
         run: |
-          gitleaks detect --source . --config .gitleaks.toml --verbose
+          gitleaks detect --source . --config .gitleaks.toml
 
   json-lint:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 2
+          fetch-depth: 0
 
       - name: Set up Python
         uses: actions/setup-python@v5
