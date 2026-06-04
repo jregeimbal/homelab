@@ -21,8 +21,7 @@ jobs:
       - name: Install dependencies
         run: |
           pip3 install yamllint gitleaks
-          sudo apt-get update
-          sudo apt-get install -y kubeconform
+          curl -sSfL https://github.com/yannh/kubeconform/releases/download/v0.7.0/kubeconform-linux-amd64.tar.gz | tar xz -C /usr/local/bin
 
       - name: YAML lint
         run: |
