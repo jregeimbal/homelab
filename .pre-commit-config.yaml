@@ -36,4 +36,4 @@ repos:
           - "-ignore-missing-schemas"
           - "-schema-location"
           - "https://raw.githubusercontent.com/datreeio/CRDs-catalog/main/"
-        files: ^flux/.*\.yaml$
+        files: ^flux/.*\.(yaml|yml)$
