@@ -1,0 +1,53 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  ci:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+
+      - name: YAML lint
+        run: |
+          docker run --rm -v $PWD:/workdir \
+            adrienverge/yamllint:latest \
+            -c /workdir/.yamllint \
+            --format parsable \
+            $(git ls-files '*.yaml' '*.yml' | grep -vE '(pre-commit-config\.yaml$|secrets/)')
+
+      - name: K8s manifest validation
+        run: |
+          docker run --rm -v $PWD:/workdir \
+            ghcr.io/yannh/kubeconform:latest \
+            -summary -ignore-missing-schemas \
+            -schema-location "https://raw.githubusercontent.com/datreeio/CRDs-catalog/main/" \
+            $(git ls-files 'flux/**/*.yaml')
+
+      - name: Secret scanning
+        uses: zricethegav/gitleaks-action@v1.2.0
+        with:
+          config: .gitleaks.toml
+          verbose: true
+
+      - name: JSON lint
+        run: |
+          python3 -c "
+          import json, glob, sys
+          errors = []
+          for f in glob.glob('assets/**/*.json', recursive=True):
+              try:
+                  with open(f) as fh:
+                      json.load(fh)
+              except (json.JSONDecodeError, FileNotFoundError) as e:
+                  errors.append(f'{f}: {e}')
+          if errors:
+              for e in errors:
+                  print(e)
+              sys.exit(1)
+          "
