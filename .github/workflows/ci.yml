@@ -30,10 +30,10 @@ jobs:
             $(git ls-files 'flux/**/*.yaml')
 
       - name: Secret scanning
-        uses: zricethegav/gitleaks-action@v1.2.0
-        with:
-          config: .gitleaks.toml
-          verbose: true
+        run: |
+          docker run --rm -v $PWD:/src \
+            zricethegav/gitleaks:latest \
+            detect --source /src --config /src/.gitleaks.toml --verbose
 
       - name: JSON lint
         run: |
