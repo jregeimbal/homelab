@@ -1,0 +1,74 @@
+---
+apiVersion: source.toolkit.fluxcd.io/v1
+kind: HelmRepository
+metadata:
+  name: longhorn
+  namespace: flux-system
+spec:
+  url: https://charts.longhorn.io
+  interval: 5m
+---
+apiVersion: source.toolkit.fluxcd.io/v1
+kind: HelmRepository
+metadata:
+  name: metallb
+  namespace: flux-system
+spec:
+  url: https://metallb.github.io/metallb
+  interval: 5m
+---
+apiVersion: source.toolkit.fluxcd.io/v1
+kind: HelmRepository
+metadata:
+  name: bitnami
+  namespace: flux-system
+spec:
+  url: https://charts.bitnami.com/bitnami
+  interval: 5m
+---
+apiVersion: source.toolkit.fluxcd.io/v1
+kind: HelmRepository
+metadata:
+  name: prometheus-community
+  namespace: flux-system
+spec:
+  url: https://prometheus-community.github.io/helm-charts
+  interval: 5m
+---
+apiVersion: source.toolkit.fluxcd.io/v1
+kind: HelmRepository
+metadata:
+  name: grafana
+  namespace: flux-system
+spec:
+  url: https://grafana.github.io/helm-charts
+  interval: 5m
+---
+apiVersion: source.toolkit.fluxcd.io/v1
+kind: HelmRepository
+metadata:
+  name: openwebui
+  namespace: flux-system
+spec:
+  url: https://open-webui.github.io/helm-charts
+  interval: 5m
+---
+apiVersion: source.toolkit.fluxcd.io/v1
+kind: GitRepository
+metadata:
+  name: hermes-agent
+  namespace: flux-system
+spec:
+  url: https://github.com/ultraworkers/hermes-agent-helm-chart
+  ref:
+    commit: e3b685d4d0288668a37216435742cd0a659ebc6c
+  interval: 5m
+---
+apiVersion: source.toolkit.fluxcd.io/v1
+kind: HelmRepository
+metadata:
+  name: tailscale
+  namespace: flux-system
+spec:
+  url: https://pkgs.tailscale.com/helmcharts
+  interval: 5m

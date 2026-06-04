@@ -1,2 +1,5 @@
 images/
 .DS_Store
+kubeconfig
+secrets/plaintext/
+.python-version

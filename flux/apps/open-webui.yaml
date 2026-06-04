@@ -1,0 +1,53 @@
+---
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: open-webui
+  namespace: open-webui
+spec:
+  interval: 5m
+  chart:
+    spec:
+      chart: open-webui
+      version: "14.6.0"
+      sourceRef:
+        kind: HelmRepository
+        name: openwebui
+        namespace: flux-system
+      interval: 5m
+  releaseName: open-webui
+  targetNamespace: open-webui
+  values:
+    replicaCount: 1
+    image:
+      repository: ghcr.io/open-webui/open-webui
+      tag: main
+    service:
+      type: LoadBalancer
+      loadBalancerClass: tailscale
+      ports:
+        - port: 80
+          targetPort: 8080
+    persistence:
+      enabled: true
+      size: 10Gi
+      storageClass: longhorn
+    ollama:
+      enabled: false
+    pipelines:
+      enabled: false
+    openaiBaseApiUrl: http://hermes-hermes-agent.jon-agent.svc.cluster.local:8642/v1
+    openaiApiKeyExistingSecret: open-webui-secret
+    openaiApiKeyExistingSecretKey: api-key
+    extraEnvFrom:
+      - secretRef:
+          name: open-webui-secret
+    env:
+      WEBUI_DEFAULT_OPENAI_MODEL: "meta-llama/llama-3.1-8b-instruct:latest"
+  install:
+    remediation:
+      retries: 3
+  upgrade:
+    cleanupOnFail: true
+    remediation:
+      retries: 3

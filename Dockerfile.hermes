@@ -1,0 +1,4 @@
+FROM nousresearch/hermes-agent:main
+
+# Try running python3 directly
+RUN /opt/hermes/.venv/bin/python3 --version

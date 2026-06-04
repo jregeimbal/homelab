@@ -1,0 +1,148 @@
+---
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: hermes-ana
+  namespace: ana-agent
+spec:
+  interval: 5m
+  chart:
+    spec:
+      chart: .
+      version: "0.1.0"
+      sourceRef:
+        kind: GitRepository
+        name: hermes-agent
+        namespace: flux-system
+      interval: 5m
+  releaseName: hermes-ana
+  targetNamespace: ana-agent
+  values:
+    apiServer:
+      enabled: true
+    secrets:
+      existingSecret: hermes-ana-secrets
+    config:
+      values:
+        agent:
+          gateway_timeout: 1800
+          max_turns: 90
+          restart_drain_timeout: 60
+          tool_use_enforcement: true
+        browser:
+          allow_private_urls: false
+          command_timeout: 60
+          inactivity_timeout: 120
+        display:
+          interim_assistant_messages: true
+          tool_progress: all
+        model:
+          base_url: http://jonathans-mac-studio:1234/v1
+          default: qwen/qwen3.6-35b-a3b
+          provider: auto
+        security:
+          redact_secrets: true
+          tirith_enabled: true
+          tirith_fail_open: true
+        stt:
+          enabled: true
+        terminal:
+          backend: local
+          cwd: .
+          timeout: 180
+        whatsapp:
+          reply_prefix: "\U0001F916 *Ana's Agent*\n──────\n"
+    env:
+      BROWSER_CDP_URL: ws://127.0.0.1:3000/
+      GATEWAY_ALLOW_ALL_USERS: "false"
+      HERMES_GATEWAY_PLATFORM_CONNECT_TIMEOUT: "90"
+      PYTHONPATH: /opt/data/py-global
+      WHATSAPP_ALLOWED_USERS: "15404194480"
+      WHATSAPP_ENABLED: "true"
+      WHATSAPP_MODE: self-chat
+    extraContainers:
+      - image: ghcr.io/browserless/chromium:latest
+        imagePullPolicy: Always
+        name: browserless-chromium
+        ports:
+          - containerPort: 3000
+            name: cdp
+            protocol: TCP
+          - containerPort: 8080
+            name: http
+            protocol: TCP
+        resources:
+          limits:
+            cpu: "2"
+            memory: 4Gi
+          requests:
+            cpu: 500m
+            memory: 2Gi
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+              - ALL
+          seccompProfile:
+            type: RuntimeDefault
+    extraInitContainers:
+      - args:
+          - |
+            set -eu
+            PYGLOBAL=/opt/data/py-global
+            if [ ! -d "$PYGLOBAL/discord" ]; then
+              curl -sS https://bootstrap.pypa.io/get-pip.py -o /tmp/get-pip.py
+              /usr/bin/python3 /tmp/get-pip.py --target "$PYGLOBAL" discord.py
+              rm -rf /tmp/get-pip.py
+            fi
+            if [ ! -d "$PYGLOBAL/faster-whisper" ]; then
+              curl -sS https://bootstrap.pypa.io/get-pip.py -o /tmp/get-pip.py
+              /usr/bin/python3 /tmp/get-pip.py --target "$PYGLOBAL" faster-whisper
+              rm -rf /tmp/get-pip.py
+            fi
+        command:
+          - /bin/sh
+          - -ec
+        image: nousresearch/hermes-agent:main
+        imagePullPolicy: IfNotPresent
+        name: pip-install
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+              - ALL
+          readOnlyRootFilesystem: true
+        volumeMounts:
+          - mountPath: /opt/data
+            name: data
+          - mountPath: /tmp
+            name: tmp
+    extraVolumeMounts:
+      - mountPath: /opt/hermes/scripts
+        name: whatsapp-scripts
+    extraVolumes:
+      - name: whatsapp-scripts
+        persistentVolumeClaim:
+          claimName: hermes-ana-data
+    fullnameOverride: hermes-ana
+    image:
+      tag: main
+    persistence:
+      enabled: true
+      size: 5Gi
+      storageClass: longhorn
+    service:
+      enabled: true
+      ports:
+        - containerPort: 8642
+          name: api-server
+          port: 8642
+          protocol: TCP
+          targetPort: 8642
+  install:
+    remediation:
+      retries: 3
+  upgrade:
+    cleanupOnFail: true
+    remediation:
+      retries: 3
