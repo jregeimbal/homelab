@@ -1,0 +1,109 @@
+---
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  yaml-lint:
+    runs-on: ubuntu-latest
+    timeout-minutes: 1
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install yamllint
+        run: pip3 install yamllint
+
+      - name: YAML lint
+        run: |
+          yamllint -c .yamllint \
+            $(git ls-files '*.yaml' '*.yml' | grep -vE '(pre-commit-config\.yaml$|secrets/)')
+
+  k8s-validation:
+    runs-on: ubuntu-latest
+    timeout-minutes: 1
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+
+      - name: Cache kubeconform
+        uses: actions/cache@v4
+        with:
+          path: /usr/local/bin/kubeconform
+          key: kubeconform-${{ hashFiles('.github/workflows/ci.yml') }}
+
+      - name: Install kubeconform
+        run: |
+          curl -sSfL https://github.com/yannh/kubeconform/releases/download/v0.7.0/kubeconform-linux-amd64.tar.gz | tar xz -C /usr/local/bin
+
+      - name: K8s manifest validation
+        run: |
+          kubeconform -summary -ignore-missing-schemas \
+            -schema-location "https://raw.githubusercontent.com/datreeio/CRDs-catalog/main/" \
+            $(git ls-files 'flux/**/*.yaml')
+
+  secret-scanning:
+    runs-on: ubuntu-latest
+    timeout-minutes: 1
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Cache gitleaks
+        uses: actions/cache@v4
+        with:
+          path: /usr/local/bin/gitleaks
+          key: gitleaks-${{ hashFiles('.github/workflows/ci.yml') }}
+
+      - name: Install gitleaks
+        run: |
+          curl -sSfL https://github.com/gitleaks/gitleaks/releases/download/v8.30.1/gitleaks_8.30.1_linux_x64.tar.gz | tar xz -C /usr/local/bin
+
+      - name: Secret scanning
+        run: |
+          gitleaks detect --source . --config .gitleaks.toml
+
+  json-lint:
+    runs-on: ubuntu-latest
+    timeout-minutes: 1
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: JSON lint
+        run: |
+          python3 -c "
+          import json, glob, sys
+          errors = []
+          for f in glob.glob('assets/**/*.json', recursive=True):
+              try:
+                  with open(f) as fh:
+                      json.load(fh)
+              except (json.JSONDecodeError, FileNotFoundError) as e:
+                  errors.append(f'{f}: {e}')
+          if errors:
+              for e in errors:
+                  print(e)
+              sys.exit(1)
+          "

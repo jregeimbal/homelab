@@ -1,0 +1,9 @@
+[allowlist]
+description = "Global allowlist"
+paths = [
+    '''\.pre-commit-config\.yaml$''',
+    '''secrets/encrypted/.*''',
+    '''venv/.*''',
+    '''images/.*''',
+    '''docs/.*'''
+]
