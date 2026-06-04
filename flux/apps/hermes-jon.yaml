@@ -39,7 +39,7 @@ spec:
         model:
           base_url: http://jonathans-mac-studio:1234/v1
           default: qwen/qwen3.6-35b-a3b
-          provider: auto
+          provider: custom
         security:
           redact_secrets: true
           tirith_enabled: true
@@ -96,6 +96,8 @@ spec:
             name: webui
             protocol: TCP
         env:
+          - name: PATH
+            value: /root/.local/bin:/opt/hermes/.venv/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
           - name: HERMES_WEBUI_HOST
             value: "0.0.0.0"
           - name: HERMES_WEBUI_PORT
@@ -104,8 +106,6 @@ spec:
             value: gateway
           - name: HERMES_WEBUI_GATEWAY_BASE_URL
             value: http://127.0.0.1:8642
-          - name: HERMES_WEBUI_AGENT_DIR
-            value: /opt/hermes
           - name: HERMES_WEBUI_GATEWAY_API_KEY
             valueFrom:
               secretKeyRef:
@@ -118,6 +118,8 @@ spec:
                 key: password
           - name: HERMES_WEBUI_STATE_DIR
             value: /home/hermeswebui/.hermes/webui
+          - name: HERMES_HOME
+            value: /opt/data
         resources:
           limits:
             cpu: "1"
@@ -130,6 +132,8 @@ spec:
           seccompProfile:
             type: RuntimeDefault
         volumeMounts:
+          - mountPath: /opt/data
+            name: data
           - name: hermes-agent-source
             mountPath: /opt/hermes
             readOnly: true
