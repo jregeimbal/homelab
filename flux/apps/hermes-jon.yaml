@@ -117,7 +117,7 @@ spec:
                 name: hermes-webui-password
                 key: password
           - name: HERMES_WEBUI_STATE_DIR
-            value: /workspace/.hermes-webui
+            value: /home/hermeswebui/.hermes/webui
         resources:
           limits:
             cpu: "1"
