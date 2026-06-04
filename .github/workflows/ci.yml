@@ -13,27 +13,31 @@ jobs:
         with:
           fetch-depth: 2
 
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: |
+          pip3 install yamllint gitleaks
+          sudo apt-get update
+          sudo apt-get install -y kubeconform
+
       - name: YAML lint
         run: |
-          docker run --rm -v $PWD:/workdir \
-            adrienverge/yamllint:latest \
-            -c /workdir/.yamllint \
-            --format parsable \
+          yamllint -c .yamllint \
             $(git ls-files '*.yaml' '*.yml' | grep -vE '(pre-commit-config\.yaml$|secrets/)')
 
       - name: K8s manifest validation
         run: |
-          docker run --rm -v $PWD:/workdir \
-            ghcr.io/yannh/kubeconform:latest \
-            -summary -ignore-missing-schemas \
+          kubeconform -summary -ignore-missing-schemas \
             -schema-location "https://raw.githubusercontent.com/datreeio/CRDs-catalog/main/" \
             $(git ls-files 'flux/**/*.yaml')
 
       - name: Secret scanning
         run: |
-          docker run --rm -v $PWD:/src \
-            zricethegav/gitleaks:latest \
-            detect --source /src --config /src/.gitleaks.toml --verbose
+          gitleaks detect --source . --config .gitleaks.toml --verbose
 
       - name: JSON lint
         run: |
