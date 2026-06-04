@@ -1,0 +1,39 @@
+repos:
+  - repo: https://github.com/adrienverge/yamllint.git
+    rev: v1.37.1
+    hooks:
+      - id: yamllint
+        args: ["--config-file", ".yamllint"]
+        types: [file, yaml]
+        files: \.(yaml|yml)$
+        exclude: >-
+          (?x)^(
+              .pre-commit-config\.yaml$|
+              secrets/.*
+          )$
+
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: check-json
+        files: \.json$
+        types: [file]
+
+  - repo: https://github.com/gitleaks/gitleaks.git
+    rev: v8.21.2
+    hooks:
+      - id: gitleaks
+        args: ["--config", ".gitleaks.toml"]
+
+  - repo: local
+    hooks:
+      - id: kubeconform
+        name: kubeconform
+        entry: kubeconform
+        language: system
+        args:
+          - "-summary"
+          - "-ignore-missing-schemas"
+          - "-schema-location"
+          - "https://raw.githubusercontent.com/datreeio/CRDs-catalog/main/"
+        files: ^flux/.*\.yaml$
