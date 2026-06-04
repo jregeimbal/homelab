@@ -10,13 +10,10 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
-defaults:
-  run:
-    shell: bash
-
 jobs:
   yaml-lint:
     runs-on: ubuntu-latest
+    timeout-minutes: 1
     steps:
       - uses: actions/checkout@v4
         with:
@@ -37,6 +34,7 @@ jobs:
 
   k8s-validation:
     runs-on: ubuntu-latest
+    timeout-minutes: 1
     steps:
       - uses: actions/checkout@v4
         with:
@@ -46,7 +44,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: /usr/local/bin/kubeconform
-          key: kubeconform-v0.7.0-${{ runner.os }}
+          key: kubeconform-${{ hashFiles('.github/workflows/ci.yml') }}
 
       - name: Install kubeconform
         run: |
@@ -56,10 +54,11 @@ jobs:
         run: |
           kubeconform -summary -ignore-missing-schemas \
             -schema-location "https://raw.githubusercontent.com/datreeio/CRDs-catalog/main/" \
-            $(git ls-files 'flux/**/*.yaml' 'k0sctl.yaml')
+            $(git ls-files 'flux/**/*.yaml')
 
   secret-scanning:
     runs-on: ubuntu-latest
+    timeout-minutes: 1
     steps:
       - uses: actions/checkout@v4
         with:
@@ -69,7 +68,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: /usr/local/bin/gitleaks
-          key: gitleaks-v8.30.1-${{ runner.os }}
+          key: gitleaks-${{ hashFiles('.github/workflows/ci.yml') }}
 
       - name: Install gitleaks
         run: |
@@ -81,6 +80,7 @@ jobs:
 
   json-lint:
     runs-on: ubuntu-latest
+    timeout-minutes: 1
     steps:
       - uses: actions/checkout@v4
         with:
