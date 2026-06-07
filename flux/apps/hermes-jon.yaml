@@ -214,7 +214,7 @@ spec:
             fi
             if [ ! -d "$PYGLOBAL/firecrawl-py" ]; then
               curl -sS https://bootstrap.pypa.io/get-pip.py -o /tmp/get-pip.py
-              /usr/bin/python3 /tmp/get-pip.py --target "$PYGLOBAL" firecrawl-py
+              /usr/bin/python3 /tmp/get-pip.py --target "$PYGLOBAL" firecrawl-py==4.17.0
               rm -rf /tmp/get-pip.py
             fi
         command:
