@@ -54,6 +54,34 @@ spec:
           reply_prefix: "\U0001F916 *Jon R Claw*\n──────\n"
         web:
           backend: firecrawl
+      skills:
+        disabled:
+          - yuanbao
+          - codex
+          - kanban-codex-lane
+          - baoyu-article-illustrator
+          - baoyu-comic
+          - baoyu-infographic
+          - comfyui
+          - p5js
+          - pixel-art
+          - touchdesigner-mcp
+          - jupyter-live-kernel
+          - himalaya
+          - minecraft-modpack-server
+          - pokemon-player
+          - spotify
+          - youtube-content
+          - audiocraft-audio-generation
+          - segment-anything-model
+          - serving-llms-vllm
+          - airtable
+          - notion
+          - powerpoint
+          - teams-meeting-pipeline
+          - godmode
+          - openhue
+          - xurl
     env:
       BROWSER_CDP_URL: ws://127.0.0.1:3000/
       DISCORD_ALLOWED_USERS: "808110923713216522"
