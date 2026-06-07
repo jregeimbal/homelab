@@ -52,6 +52,8 @@ spec:
           timeout: 180
         whatsapp:
           reply_prefix: "\U0001F916 *Jon R Claw*\n──────\n"
+        web:
+          backend: firecrawl
     env:
       BROWSER_CDP_URL: ws://127.0.0.1:3000/
       DISCORD_ALLOWED_USERS: "808110923713216522"
@@ -208,6 +210,11 @@ spec:
             if [ ! -d "$PYGLOBAL/dotenv" ]; then
               curl -sS https://bootstrap.pypa.io/get-pip.py -o /tmp/get-pip.py
               /usr/bin/python3 /tmp/get-pip.py --target "$PYGLOBAL" python-dotenv
+              rm -rf /tmp/get-pip.py
+            fi
+            if [ ! -d "$PYGLOBAL/firecrawl-py" ]; then
+              curl -sS https://bootstrap.pypa.io/get-pip.py -o /tmp/get-pip.py
+              /usr/bin/python3 /tmp/get-pip.py --target "$PYGLOBAL" firecrawl-py
               rm -rf /tmp/get-pip.py
             fi
         command:
