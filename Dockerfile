@@ -18,6 +18,5 @@ RUN mkdir -p /opt/data/py-global && \
 
 RUN mkdir -p /root/.claude && \
     cp assets/claude-settings.json /root/.claude/settings.json && \
-    npm install -g @anthropic-ai/claude-code && \
-    npm cache clean --force && \
+    curl -fsSL https://github.com/anyscale/claude-code/releases/latest/download/install.sh | sh && \
     claude --version
