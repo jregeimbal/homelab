@@ -128,15 +128,8 @@ jobs:
           VERSION="${{ steps.version.outputs.version }}"
           IMAGE="${REGISTRY}/${OWNER}/${IMAGE_NAME}:${VERSION}"
           pip install pyyaml --quiet
-          python3 -c "
-import yaml, sys
-path = 'flux/apps/hermes-jon.yaml'
-with open(path) as f:
-    docs = list(yaml.safe_load_all(f))
-docs[0]['spec']['values']['image'] = {'repository': '${IMAGE%:*}', 'tag': '${IMAGE#*:}'}
-with open(path, 'w') as f:
-    yaml.dump(docs[0], f, default_flow_style=False, sort_keys=False)
-"
+          python3 .github/scripts/update-image.py \
+            flux/apps/hermes-jon.yaml "${IMAGE%:*}" "${IMAGE#*:}"
 
       - name: Update hermes-ana.yaml
         run: |
@@ -144,15 +137,8 @@ with open(path, 'w') as f:
           VERSION="${{ steps.version.outputs.version }}"
           IMAGE="${REGISTRY}/${OWNER}/${IMAGE_NAME}:${VERSION}"
           pip install pyyaml --quiet
-          python3 -c "
-import yaml, sys
-path = 'flux/apps/hermes-ana.yaml'
-with open(path) as f:
-    docs = list(yaml.safe_load_all(f))
-docs[0]['spec']['values']['image'] = {'repository': '${IMAGE%:*}', 'tag': '${IMAGE#*:}'}
-with open(path, 'w') as f:
-    yaml.dump(docs[0], f, default_flow_style=False, sort_keys=False)
-"
+          python3 .github/scripts/update-image.py \
+            flux/apps/hermes-ana.yaml "${IMAGE%:*}" "${IMAGE#*:}"
 
       - name: Commit and push manifest updates
         run: |

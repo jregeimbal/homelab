@@ -10,3 +10,9 @@ rules:
     spaces: 2
   comments:
     min-spaces-from-content: 1
+  document-start:
+    level: warning
+
+ignore:
+  - "*.sealedsecret.yaml"
+  - "*kustomization.yaml"
