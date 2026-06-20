@@ -126,14 +126,33 @@ jobs:
         run: |
           set -e
           VERSION="${{ steps.version.outputs.version }}"
-          sed -i "s|image: nousresearch/hermes-agent:${VERSION}|image: ${REGISTRY}/${OWNER}/${IMAGE_NAME}:${VERSION}|g" flux/apps/hermes-jon.yaml
+          IMAGE="${REGISTRY}/${OWNER}/${IMAGE_NAME}:${VERSION}"
+          pip install pyyaml --quiet
+          python3 -c "
+import yaml, sys
+path = 'flux/apps/hermes-jon.yaml'
+with open(path) as f:
+    docs = list(yaml.safe_load_all(f))
+docs[0]['spec']['values']['image'] = {'repository': '${IMAGE%:*}', 'tag': '${IMAGE#*:}'}
+with open(path, 'w') as f:
+    yaml.dump(docs[0], f, default_flow_style=False, sort_keys=False)
+"
 
       - name: Update hermes-ana.yaml
         run: |
           set -e
           VERSION="${{ steps.version.outputs.version }}"
-          sed -i "s|image: nousresearch/hermes-agent:main|image: ${REGISTRY}/${OWNER}/${IMAGE_NAME}:${VERSION}|g" flux/apps/hermes-ana.yaml
-          sed -i 's|tag: main|tag: '"${VERSION}"'|g' flux/apps/hermes-ana.yaml
+          IMAGE="${REGISTRY}/${OWNER}/${IMAGE_NAME}:${VERSION}"
+          pip install pyyaml --quiet
+          python3 -c "
+import yaml, sys
+path = 'flux/apps/hermes-ana.yaml'
+with open(path) as f:
+    docs = list(yaml.safe_load_all(f))
+docs[0]['spec']['values']['image'] = {'repository': '${IMAGE%:*}', 'tag': '${IMAGE#*:}'}
+with open(path, 'w') as f:
+    yaml.dump(docs[0], f, default_flow_style=False, sort_keys=False)
+"
 
       - name: Commit and push manifest updates
         run: |

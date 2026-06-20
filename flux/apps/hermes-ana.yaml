@@ -94,6 +94,7 @@ spec:
           claimName: hermes-ana-data
     fullnameOverride: hermes-ana
     image:
+      repository: ghcr.io/jregeimbal/hermes-agent-jregeimbal-homelab
       tag: v2026.5.29.2
     persistence:
       enabled: true
