@@ -155,18 +155,16 @@ jobs:
           set -e
           VERSION="${{ steps.version.outputs.version }}"
           IMAGE="${REGISTRY}/${OWNER}/${IMAGE_NAME}:${VERSION}"
-          pip install pyyaml --quiet
-          python3 .github/scripts/update-image.py \
-            flux/apps/hermes-jon.yaml "${IMAGE%:*}" "${IMAGE#*:}"
+          sed -i "s|repository: .*|repository: ${IMAGE%:*}|" flux/apps/hermes-jon.yaml
+          sed -i "s|tag: .*|tag: \"${IMAGE#*:}\"|" flux/apps/hermes-jon.yaml
 
       - name: Update hermes-ana.yaml
         run: |
           set -e
           VERSION="${{ steps.version.outputs.version }}"
           IMAGE="${REGISTRY}/${OWNER}/${IMAGE_NAME}:${VERSION}"
-          pip install pyyaml --quiet
-          python3 .github/scripts/update-image.py \
-            flux/apps/hermes-ana.yaml "${IMAGE%:*}" "${IMAGE#*:}"
+          sed -i "s|repository: .*|repository: ${IMAGE%:*}|" flux/apps/hermes-ana.yaml
+          sed -i "s|tag: .*|tag: \"${IMAGE#*:}\"|" flux/apps/hermes-ana.yaml
 
       - name: Commit and push manifest updates
         run: |
