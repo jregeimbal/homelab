@@ -28,6 +28,7 @@ jobs:
       packages: write
     outputs:
       version-tag: ${{ steps.meta.outputs.tags }}
+      version: ${{ steps.base_version.outputs.version }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -113,23 +114,17 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Get base image version
-        id: version
-        run: |
-          VERSION=$(grep '^FROM ' Dockerfile | awk '{print $2}' | sed 's/.*://')
-          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
-
       - name: Verify claude CLI
         run: |
           docker run --rm \
-            ${{ env.REGISTRY }}/${{ env.OWNER }}/${{ env.IMAGE_NAME }}:${{ steps.version.outputs.version }} \
+            ${{ env.REGISTRY }}/${{ env.OWNER }}/${{ env.IMAGE_NAME }}:${{ needs.build-push.outputs.version }} \
             claude --version
 
       - name: Verify discord package
         run: |
           docker run --rm \
             -e PYTHONPATH=/opt/data/py-global \
-            ${{ env.REGISTRY }}/${{ env.OWNER }}/${{ env.IMAGE_NAME }}:${{ steps.version.outputs.version }} \
+            ${{ env.REGISTRY }}/${{ env.OWNER }}/${{ env.IMAGE_NAME }}:${{ needs.build-push.outputs.version }} \
             python3 -c "import discord; print(discord.__version__)"
 
   bump-version:
