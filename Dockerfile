@@ -5,7 +5,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libffi-dev \
     && rm -rf /var/lib/apt/lists/*
 
-RUN /usr/bin/python3 -c "import urllib.request; exec(urllib.request.urlopen('https://bootstrap.pypa.io/get-pip.py').read())"
+RUN /usr/bin/python3 -m ensurepip --upgrade && \
+    /usr/bin/python3 -m pip install --no-cache-dir pip
 
 COPY requirements.txt .
 RUN mkdir -p /opt/data/py-global && \
