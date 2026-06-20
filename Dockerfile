@@ -5,6 +5,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libffi-dev \
     && rm -rf /var/lib/apt/lists/*
 
+RUN curl -sS https://bootstrap.pypa.io/get-pip.py | /usr/bin/python3
+
 COPY requirements.txt .
 RUN mkdir -p /opt/data/py-global && \
     pip install --no-cache-dir -r requirements.txt --target /opt/data/py-global && \
