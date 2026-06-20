@@ -42,6 +42,12 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Get base image version
+        id: base_version
+        run: |
+          VERSION=$(grep '^FROM ' Dockerfile | awk '{print $2}' | sed 's/.*://')
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
       - name: Docker metadata
         id: meta
         uses: docker/metadata-action@v5
@@ -49,7 +55,7 @@ jobs:
           images: ${{ env.REGISTRY }}/${{ env.OWNER }}/${{ env.IMAGE_NAME }}
           tags: |
             type=sha,format=short
-            type=raw,value={{version}},enable=${{ github.event_name == 'push' }}
+            type=raw,value=v${{ steps.base_version.outputs.version }},enable=${{ github.event_name == 'push' }}
             type=raw,value={{date 'YYYY-MM-DD'}},enable=${{ github.event_name == 'push' }}
             type=raw,value=latest,enable=${{ github.event_name == 'push' }}
 
