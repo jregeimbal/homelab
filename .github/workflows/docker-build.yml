@@ -5,6 +5,7 @@ on:
   push:
     branches: [main]
     paths: [Dockerfile]
+    if: github.actor != 'github-actions[bot]'
   pull_request:
     branches: [main]
     paths: [Dockerfile]
@@ -111,26 +112,30 @@ jobs:
       - name: Get base image version
         id: version
         run: |
+          set -e
           VERSION=$(grep '^FROM ' Dockerfile | awk '{print $2}' | sed 's/.*://')
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
           echo "Base image version: $VERSION"
 
       - name: Update hermes-jon.yaml
         run: |
+          set -e
           VERSION="${{ steps.version.outputs.version }}"
           sed -i "s|image: nousresearch/hermes-agent:${VERSION}|image: ${REGISTRY}/${OWNER}/${IMAGE_NAME}:${VERSION}|g" flux/apps/hermes-jon.yaml
 
       - name: Update hermes-ana.yaml
         run: |
+          set -e
           VERSION="${{ steps.version.outputs.version }}"
           sed -i "s|image: nousresearch/hermes-agent:main|image: ${REGISTRY}/${OWNER}/${IMAGE_NAME}:${VERSION}|g" flux/apps/hermes-ana.yaml
           sed -i 's|tag: main|tag: '"${VERSION}"'|g' flux/apps/hermes-ana.yaml
 
       - name: Commit and push manifest updates
         run: |
+          set -eo pipefail
           VERSION="${{ steps.version.outputs.version }}"
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add flux/apps/hermes-jon.yaml flux/apps/hermes-ana.yaml
           git commit -m "chore: bump hermes image to ${VERSION}" || echo "No changes to commit"
-          git push
+          git push --force-with-lease 2>&1 || { echo "Git push failed - check for conflicts"; exit 1; }
