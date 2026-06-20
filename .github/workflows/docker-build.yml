@@ -5,7 +5,6 @@ on:
   push:
     branches: [main]
     paths: [Dockerfile]
-    if: github.actor != 'github-actions[bot]'
   pull_request:
     branches: [main]
     paths: [Dockerfile]
@@ -99,7 +98,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     needs: [build-push, validate-manifests]
-    if: github.event_name == 'push' && success()
+    if: github.event_name == 'push' && success() && github.actor != 'github-actions[bot]'
     env:
       GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     steps:
