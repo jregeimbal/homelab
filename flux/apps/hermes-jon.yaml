@@ -83,6 +83,9 @@ spec:
           - openhue
           - xurl
     env:
+      ANTHROPIC_AUTH_TOKEN: lmstudio
+      ANTHROPIC_BASE_URL: http://jonathans-mac-studio:1234
+      CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC: '1'
       BROWSER_CDP_URL: ws://127.0.0.1:3000/
       DISCORD_ALLOWED_USERS: "808110923713216522"
       DISCORD_HOME_CHANNEL: "1490811659214913698"
