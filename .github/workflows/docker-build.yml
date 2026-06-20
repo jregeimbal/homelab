@@ -1,0 +1,146 @@
+---
+name: Docker Build
+
+on:
+  push:
+    branches: [main]
+    paths: [Dockerfile]
+  pull_request:
+    branches: [main]
+    paths: [Dockerfile]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  IMAGE_NAME: hermes-agent-jregeimbal-homelab
+  REGISTRY: ghcr.io
+  OWNER: jregeimbal
+
+jobs:
+  build-push:
+    name: Build and Push
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      packages: write
+    outputs:
+      version-tag: ${{ steps.meta.outputs.tags }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Get base image version
+        id: base_version
+        run: |
+          VERSION=$(grep '^FROM ' Dockerfile | awk '{print $2}' | sed 's/.*://')
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Docker metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.OWNER }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=sha,format=short
+            type=raw,value=${{ steps.base_version.outputs.version }},enable=${{ github.event_name == 'push' }}
+            type=raw,value={{date 'YYYY-MM-DD'}},enable=${{ github.event_name == 'push' }}
+            type=raw,value=latest,enable=${{ github.event_name == 'push' }}
+
+      - name: Build and push
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          platforms: linux/amd64,linux/arm64
+          push: ${{ github.event_name == 'push' }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  validate-manifests:
+    name: Validate K8s Manifests
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    needs: [build-push]
+    if: github.event_name == 'push' && success()
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+
+      - name: Cache kubeconform
+        uses: actions/cache@v4
+        with:
+          path: /usr/local/bin/kubeconform
+          key: kubeconform-${{ hashFiles('.github/workflows/docker-build.yml') }}
+
+      - name: Install kubeconform
+        run: |
+          curl -sSfL https://github.com/yannh/kubeconform/releases/download/v0.7.0/kubeconform-linux-amd64.tar.gz | tar xz -C /usr/local/bin
+
+      - name: Validate K8s manifests
+        run: |
+          kubeconform -summary -ignore-missing-schemas \
+            -schema-location "https://raw.githubusercontent.com/datreeio/CRDs-catalog/main/" \
+            flux/apps/hermes-jon.yaml \
+            flux/apps/hermes-ana.yaml
+
+  bump-version:
+    name: Bump Image Version
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    needs: [build-push, validate-manifests]
+    if: github.event_name == 'push' && success() && github.actor != 'github-actions[bot]'
+    env:
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Get base image version
+        id: version
+        run: |
+          set -e
+          VERSION=$(grep '^FROM ' Dockerfile | awk '{print $2}' | sed 's/.*://')
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "Base image version: $VERSION"
+
+      - name: Update hermes-jon.yaml
+        run: |
+          set -e
+          VERSION="${{ steps.version.outputs.version }}"
+          sed -i "s|image: nousresearch/hermes-agent:${VERSION}|image: ${REGISTRY}/${OWNER}/${IMAGE_NAME}:${VERSION}|g" flux/apps/hermes-jon.yaml
+
+      - name: Update hermes-ana.yaml
+        run: |
+          set -e
+          VERSION="${{ steps.version.outputs.version }}"
+          sed -i "s|image: nousresearch/hermes-agent:main|image: ${REGISTRY}/${OWNER}/${IMAGE_NAME}:${VERSION}|g" flux/apps/hermes-ana.yaml
+          sed -i 's|tag: main|tag: '"${VERSION}"'|g' flux/apps/hermes-ana.yaml
+
+      - name: Commit and push manifest updates
+        run: |
+          set -eo pipefail
+          VERSION="${{ steps.version.outputs.version }}"
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add flux/apps/hermes-jon.yaml flux/apps/hermes-ana.yaml
+          git commit -m "chore: bump hermes image to ${VERSION}" || echo "No changes to commit"
+          git push --force-with-lease 2>&1 || { echo "Git push failed - check for conflicts"; exit 1; }

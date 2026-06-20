@@ -103,7 +103,7 @@ spec:
         command:
           - /bin/sh
           - -ec
-        image: nousresearch/hermes-agent:main
+        image: ghcr.io/jregeimbal/hermes-agent-jregeimbal-homelab:v2026.5.29.2
         imagePullPolicy: IfNotPresent
         name: pip-install
         securityContext:
@@ -126,7 +126,7 @@ spec:
           claimName: hermes-ana-data
     fullnameOverride: hermes-ana
     image:
-      tag: main
+      tag: v2026.5.29.2
     persistence:
       enabled: true
       size: 5Gi
