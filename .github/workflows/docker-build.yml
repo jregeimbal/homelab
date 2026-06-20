@@ -132,6 +132,12 @@ jobs:
             ${{ env.REGISTRY }}/${{ env.OWNER }}/${{ env.IMAGE_NAME }}:${{ needs.build-push.outputs.version }}-${{ needs.build-push.outputs.sha }} \
             python3 -c "import discord; print(discord.__version__)"
 
+      - name: Verify gh CLI
+        run: |
+          docker run --rm \
+            ${{ env.REGISTRY }}/${{ env.OWNER }}/${{ env.IMAGE_NAME }}:${{ needs.build-push.outputs.version }}-${{ needs.build-push.outputs.sha }} \
+            gh --version
+
   bump-version:
     name: Bump Image Version
     runs-on: ubuntu-latest
