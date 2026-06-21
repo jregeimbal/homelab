@@ -171,7 +171,9 @@ jobs:
           VERSION="${{ steps.version.outputs.version }}"
           SHA="${{ steps.git_sha.outputs.sha }}"
           IMAGE="${REGISTRY}/${OWNER}/${IMAGE_NAME}:${VERSION}-${SHA}"
-          sed -i "s|repository: .*|repository: ${IMAGE%:*}|" flux/apps/hermes-jon.yaml
+          IMAGE_CURRENT="ghcr.io/jregeimbal/hermes-agent-jregeimbal-homelab"
+          sed -i "s|repository: ${IMAGE_CURRENT}|repository: ${IMAGE%:*}|" flux/apps/hermes-jon.yaml
+          sed -i "s|image: ${IMAGE_CURRENT}.*|image: ${IMAGE}|" flux/apps/hermes-jon.yaml
           sed -i "s|tag: .*|tag: \"${IMAGE#*:}\"|" flux/apps/hermes-jon.yaml
 
       - name: Update hermes-ana.yaml
@@ -180,7 +182,9 @@ jobs:
           VERSION="${{ steps.version.outputs.version }}"
           SHA="${{ steps.git_sha.outputs.sha }}"
           IMAGE="${REGISTRY}/${OWNER}/${IMAGE_NAME}:${VERSION}-${SHA}"
-          sed -i "s|repository: .*|repository: ${IMAGE%:*}|" flux/apps/hermes-ana.yaml
+          IMAGE_CURRENT="ghcr.io/jregeimbal/hermes-agent-jregeimbal-homelab"
+          sed -i "s|repository: ${IMAGE_CURRENT}|repository: ${IMAGE%:*}|" flux/apps/hermes-ana.yaml
+          sed -i "s|image: ${IMAGE_CURRENT}.*|image: ${IMAGE}|" flux/apps/hermes-ana.yaml
           sed -i "s|tag: .*|tag: \"${IMAGE#*:}\"|" flux/apps/hermes-ana.yaml
 
       - name: Commit and push manifest updates
