@@ -121,6 +121,45 @@ spec:
           allowPrivilegeEscalation: false
           seccompProfile:
             type: RuntimeDefault
+      - name: hermes-desktop
+        image: ghcr.io/jregeimbal/hermes-agent-jregeimbal-homelab:v2026.6.19-34c59c3
+        imagePullPolicy: IfNotPresent
+        command:
+          - hermes
+          - dashboard
+          - --host
+          - "0.0.0.0"
+          - --port
+          - "9119"
+          - --insecure
+          - --no-open
+          - --tui
+        ports:
+          - containerPort: 9119
+            name: desktop
+            protocol: TCP
+        env:
+          - name: PATH
+            value: /root/.local/bin:/opt/hermes/.venv/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+          - name: HERMES_HOME
+            value: /opt/data
+        resources:
+          limits:
+            cpu: "500m"
+            memory: 512Mi
+          requests:
+            cpu: 100m
+            memory: 128Mi
+        securityContext:
+          allowPrivilegeEscalation: false
+          seccompProfile:
+            type: RuntimeDefault
+        volumeMounts:
+          - mountPath: /opt/data
+            name: data
+          - name: hermes-agent-source
+            mountPath: /opt/hermes
+            readOnly: true
       - image: ghcr.io/nesquena/hermes-webui:latest
         imagePullPolicy: Always
         name: hermes-webui
@@ -266,6 +305,11 @@ spec:
           port: 8787
           protocol: TCP
           targetPort: 8787
+        - containerPort: 9119
+          name: desktop
+          port: 9119
+          protocol: TCP
+          targetPort: 9119
   timeout: 15m
   install:
     remediation:
