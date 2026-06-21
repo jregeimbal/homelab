@@ -33,6 +33,7 @@ spec:
           allow_private_urls: false
           command_timeout: 60
           inactivity_timeout: 120
+          cdp_url: ws://127.0.0.1:3000/
         display:
           interim_assistant_messages: true
           tool_progress: all
