@@ -9,5 +9,6 @@ resources:
   - open-webui.yaml
   - open-webui-secret.sealedsecret.yaml
   - hermes-jon-secrets.sealedsecret.yaml
+  - hermes-jon-desktop-secrets.sealedsecret.yaml
   - hermes-ana-secrets.sealedsecret.yaml
   - monitoring.yaml
