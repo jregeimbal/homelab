@@ -143,6 +143,11 @@ spec:
             value: /root/.local/bin:/opt/hermes/.venv/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
           - name: HERMES_HOME
             value: /opt/data
+          - name: HERMES_DASHBOARD_SESSION_TOKEN
+            valueFrom:
+              secretKeyRef:
+                name: hermes-jon-desktop-secrets
+                key: HERMES_DASHBOARD_SESSION_TOKEN
         resources:
           limits:
             cpu: "500m"
