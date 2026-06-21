@@ -4,10 +4,10 @@ name: Docker Build
 on:
   push:
     branches: [main]
-    paths: [Dockerfile]
+    paths: [Dockerfile,flux/apps/hermes-jon.yaml,flux/apps/hermes-ana.yaml]
   pull_request:
     branches: [main]
-    paths: [Dockerfile]
+    paths: [Dockerfile,flux/apps/hermes-jon.yaml,flux/apps/hermes-ana.yaml]
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
