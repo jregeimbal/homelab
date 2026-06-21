@@ -182,7 +182,7 @@ spec:
         command:
           - /bin/sh
           - -ec
-        image: ghcr.io/jregeimbal/hermes-agent-jregeimbal-homelab:v2026.5.29.2
+        image: ghcr.io/jregeimbal/hermes-agent-jregeimbal-homelab:v2026.6.19
         imagePullPolicy: IfNotPresent
         name: copy-hermes-source
         securityContext:
@@ -204,7 +204,7 @@ spec:
         command:
           - /bin/sh
           - -ec
-        image: ghcr.io/jregeimbal/hermes-agent-jregeimbal-homelab:v2026.5.29.2
+        image: ghcr.io/jregeimbal/hermes-agent-jregeimbal-homelab:v2026.6.19
         imagePullPolicy: IfNotPresent
         name: fix-data-ownership
         securityContext:
@@ -224,7 +224,7 @@ spec:
         name: run-tmp
     image:
       repository: ghcr.io/jregeimbal/hermes-agent-jregeimbal-homelab
-      tag: "v2026.5.29.2-4f8b57f"
+      tag: v2026.6.19
       pullPolicy: IfNotPresent
     podSecurityContext:
       fsGroup: 0
