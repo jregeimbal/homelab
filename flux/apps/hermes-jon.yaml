@@ -133,7 +133,6 @@ spec:
           - "9119"
           - --insecure
           - --no-open
-          - --tui
         ports:
           - containerPort: 9119
             name: desktop
