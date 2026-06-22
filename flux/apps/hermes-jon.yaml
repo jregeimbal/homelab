@@ -165,57 +165,6 @@ spec:
           - name: hermes-agent-source
             mountPath: /opt/hermes
             readOnly: true
-      - image: ghcr.io/nesquena/hermes-webui:latest
-        imagePullPolicy: Always
-        name: hermes-webui
-        ports:
-          - containerPort: 8787
-            name: webui
-            protocol: TCP
-        env:
-          - name: PATH
-            value: /root/.local/bin:/opt/hermes/.venv/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
-          - name: HERMES_WEBUI_HOST
-            value: "0.0.0.0"
-          - name: HERMES_WEBUI_PORT
-            value: "8787"
-          - name: HERMES_WEBUI_CHAT_BACKEND
-            value: gateway
-          - name: HERMES_WEBUI_GATEWAY_BASE_URL
-            value: http://127.0.0.1:8642
-          - name: HERMES_WEBUI_GATEWAY_API_KEY
-            valueFrom:
-              secretKeyRef:
-                name: hermes-jon-secrets
-                key: API_SERVER_KEY
-          - name: HERMES_WEBUI_PASSWORD
-            valueFrom:
-              secretKeyRef:
-                name: hermes-webui-password
-                key: password
-          - name: HERMES_WEBUI_STATE_DIR
-            value: /home/hermeswebui/.hermes/webui
-          - name: HERMES_HOME
-            value: /opt/data
-        resources:
-          limits:
-            cpu: "1"
-            memory: 2Gi
-          requests:
-            cpu: 250m
-            memory: 512Mi
-        securityContext:
-          allowPrivilegeEscalation: false
-          seccompProfile:
-            type: RuntimeDefault
-        volumeMounts:
-          - mountPath: /opt/data
-            name: data
-          - name: hermes-agent-source
-            mountPath: /opt/hermes
-            readOnly: true
-          - name: workspace
-            mountPath: /workspace
     extraInitContainers:
       - args:
           - |
@@ -294,9 +243,6 @@ spec:
         emptyDir: {}
       - name: hermes-agent-source
         emptyDir: {}
-      - name: workspace
-        persistentVolumeClaim:
-          claimName: hermes-webui-workspace
     service:
       enabled: true
       ports:
@@ -305,11 +251,6 @@ spec:
           port: 8642
           protocol: TCP
           targetPort: 8642
-        - containerPort: 8787
-          name: webui
-          port: 8787
-          protocol: TCP
-          targetPort: 8787
         - containerPort: 9119
           name: desktop
           port: 9119
