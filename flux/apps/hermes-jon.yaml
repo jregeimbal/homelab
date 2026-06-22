@@ -55,6 +55,11 @@ spec:
           reply_prefix: "\U0001F916 *Jon R Claw*\n──────\n"
         web:
           backend: firecrawl
+        mcp_servers:
+          context7:
+            url: "https://mcp.context7.com/mcp"
+            headers:
+              CONTEXT7_API_KEY: "ctx7sk-f038e7b8-560b-4116-b059-f2fbbf7f365d"
       skills:
         disabled:
           - yuanbao
