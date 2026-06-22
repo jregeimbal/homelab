@@ -220,18 +220,16 @@ spec:
       tag: "v2026.6.19-34c59c3"
       pullPolicy: IfNotPresent
     podSecurityContext:
-      fsGroup: 0
+      fsGroup: 10000
       fsGroupChangePolicy: OnRootMismatch
-      runAsGroup: 0
-      runAsNonRoot: false
-      runAsUser: 0
+      runAsGroup: 10000
+      runAsNonRoot: true
+      runAsUser: 10000
       seccompProfile:
         type: RuntimeDefault
     securityContext:
       allowPrivilegeEscalation: false
       readOnlyRootFilesystem: true
-      runAsUser: 0
-      runAsGroup: 0
       seccompProfile:
         type: RuntimeDefault
     persistence:
@@ -264,14 +262,3 @@ spec:
     cleanupOnFail: true
     remediation:
       retries: 3
-  postRenderers:
-    - kustomize:
-        patches:
-          - target:
-              group: apps
-              version: v1
-              kind: Deployment
-              name: hermes-hermes-agent
-            patch: |
-              - op: remove
-                path: /spec/template/spec/containers/0/securityContext/capabilities
