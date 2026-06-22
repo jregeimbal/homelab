@@ -181,6 +181,7 @@ spec:
         securityContext:
           allowPrivilegeEscalation: false
           readOnlyRootFilesystem: true
+          runAsNonRoot: false
           runAsUser: 0
           runAsGroup: 0
           seccompProfile:
@@ -203,6 +204,7 @@ spec:
         securityContext:
           allowPrivilegeEscalation: false
           readOnlyRootFilesystem: true
+          runAsNonRoot: false
           runAsUser: 0
           runAsGroup: 0
           seccompProfile:
