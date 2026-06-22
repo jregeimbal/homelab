@@ -157,6 +157,8 @@ spec:
             memory: 128Mi
         securityContext:
           allowPrivilegeEscalation: false
+          runAsUser: 10000
+          runAsGroup: 10000
           seccompProfile:
             type: RuntimeDefault
         volumeMounts:
@@ -195,6 +197,7 @@ spec:
           - |
             set -eu
             chown -R 10000:10000 /opt/data
+            chown 10000:10000 /mnt/run
         command:
           - /bin/sh
           - -ec
@@ -214,6 +217,8 @@ spec:
             name: data
           - mountPath: /tmp
             name: tmp
+          - mountPath: /mnt/run
+            name: run-tmp
     extraVolumeMounts:
       - mountPath: /run
         name: run-tmp
@@ -224,14 +229,13 @@ spec:
     podSecurityContext:
       fsGroup: 10000
       fsGroupChangePolicy: OnRootMismatch
-      runAsGroup: 10000
-      runAsNonRoot: true
-      runAsUser: 10000
       seccompProfile:
         type: RuntimeDefault
     securityContext:
       allowPrivilegeEscalation: false
       readOnlyRootFilesystem: true
+      runAsUser: 10000
+      runAsGroup: 10000
       seccompProfile:
         type: RuntimeDefault
     persistence:
