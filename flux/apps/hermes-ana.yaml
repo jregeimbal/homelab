@@ -95,7 +95,7 @@ spec:
     fullnameOverride: hermes-ana
     image:
       repository: ghcr.io/jregeimbal/hermes-agent-jregeimbal-homelab
-      tag: "v2026.6.19-34c59c3"
+      tag: "v2026.6.19-14b5699"
     persistence:
       enabled: true
       size: 5Gi
