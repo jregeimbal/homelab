@@ -16,6 +16,18 @@ RUN mkdir -p /opt/data/py-global && \
     pip install --no-cache-dir -r requirements.txt --target /opt/data/py-global && \
     rm requirements.txt
 
+ARG OPENCODE_VERSION=1.17.9
+
+COPY assets/opencode.json /assets/opencode.json
+
+RUN ARCH=$(dpkg --print-architecture) && \
+    if [ "$ARCH" = "amd64" ]; then TARGET=x64; else TARGET=arm64; fi && \
+    curl -fSL "https://github.com/anomalyco/opencode/releases/download/v${OPENCODE_VERSION}/opencode-linux-${TARGET}.tar.gz" -o /tmp/opencode.tar.gz && \
+    tar -xzf /tmp/opencode.tar.gz -C /usr/local/bin/ opencode && \
+    rm /tmp/opencode.tar.gz && \
+    mkdir -p /root/.config/opencode && \
+    cp /assets/opencode.json /root/.config/opencode/opencode.json
+
 COPY assets/claude-settings.json /root/.claude/settings.json
 RUN npm install -g @anthropic-ai/claude-code && \
     npm cache clean --force && \

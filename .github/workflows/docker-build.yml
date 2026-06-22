@@ -138,6 +138,12 @@ jobs:
             ${{ env.REGISTRY }}/${{ env.OWNER }}/${{ env.IMAGE_NAME }}:${{ needs.build-push.outputs.version }}-${{ needs.build-push.outputs.sha }} \
             gh --version
 
+      - name: Verify opencode
+        run: |
+          docker run --rm \
+            ${{ env.REGISTRY }}/${{ env.OWNER }}/${{ env.IMAGE_NAME }}:${{ needs.build-push.outputs.version }}-${{ needs.build-push.outputs.sha }} \
+            opencode --help 2>&1 | head -5
+
   bump-version:
     name: Bump Image Version
     runs-on: ubuntu-latest
