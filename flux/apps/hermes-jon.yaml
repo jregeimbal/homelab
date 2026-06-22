@@ -84,6 +84,7 @@ spec:
           - openhue
           - xurl
     env:
+      GH_CONFIG_DIR: /opt/data/gh-config
       ANTHROPIC_AUTH_TOKEN: lmstudio
       ANTHROPIC_BASE_URL: http://jonathans-mac-studio:1234
       CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC: '1'
