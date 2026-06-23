@@ -76,7 +76,7 @@ Frontmatter:
 
 Skill behavior:
 1. Confirm `owner/repo` with user if not in context
-2. Clone repo into `/opt/data/<repo>` if not present, then `cd` into it
+2. If repo exists at `/opt/data/<repo>`, `cd` into it and `git pull --rebase origin $(git symbolic-ref --short HEAD)` to update the default branch. If not present, clone it with `gh repo clone` then `cd` into it.
 3. Run `zeroshot run <issue_number> --pr --provider opencode`
 4. Report outcome: PR URL on `VERIFIED`, failure summary on `REJECTED`, resume command on interruption
 
@@ -85,7 +85,7 @@ Skill behavior:
 ```
 User: "use zeroshot to implement issue #42 on owner/repo"
   → Hermes loads zeroshot skill
-  → Confirms repo, clones to /opt/data/repo, cd into it
+  → Confirms repo; clones to /opt/data/repo if absent, otherwise pulls --rebase; cd into it
   → Runs: zeroshot run 42 --pr --provider opencode
       → zeroshot planner (opencode) → creates acceptance criteria
       → zeroshot implementer (opencode) → makes changes in git worktree
