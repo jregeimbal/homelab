@@ -56,14 +56,17 @@ Don't use for:
    ```
    Zeroshot prints a cluster ID (e.g., `cluster-abc123`) and returns immediately. Record it.
 
-4. **Monitor progress** by streaming logs:
-   ```bash
-   zeroshot logs <cluster-id> -f
-   ```
-   Use `-w` instead of `-f` to watch with auto-reconnect if the stream drops. Check overall status at any point:
+4. **Confirm it's running**, then report the cluster ID to the user:
    ```bash
    zeroshot status <cluster-id>
    ```
+   Do NOT use `zeroshot logs -f` or `-w` — those stream indefinitely and block the agent. Use status-based polling instead.
+
+   To poll until done (runs for ~3 minutes then returns control):
+   ```bash
+   for i in 1 2 3; do zeroshot status <cluster-id>; sleep 60; done
+   ```
+   Re-run as needed. Exit early if the status shows `VERIFIED` or `REJECTED`.
 
 5. **Report the outcome** once the cluster finishes:
    - `VERIFIED` — PR was opened. Report the PR URL to the user.
@@ -77,9 +80,7 @@ Don't use for:
 
 ```bash
 zeroshot list                    # show all clusters (active and past)
-zeroshot status <cluster-id>     # details on one cluster
-zeroshot logs <cluster-id> -f    # stream logs (Ctrl-C detaches, does not stop cluster)
-zeroshot logs <cluster-id> -w    # watch with auto-reconnect
+zeroshot status <cluster-id>     # current state — use this for polling (returns immediately)
 zeroshot stop <cluster-id>       # graceful stop (waits for current agent to finish)
 zeroshot kill <cluster-id>       # force-kill immediately
 zeroshot resume <cluster-id>     # resume from last persisted checkpoint
@@ -90,7 +91,7 @@ zeroshot resume <cluster-id>     # resume from last persisted checkpoint
 1. **Not in the repo root.** Zeroshot creates worktrees relative to the current directory. Always `cd` into the repo before running.
 2. **GitHub auth missing.** Run `gh auth status` first. The container has `gh` configured via `GH_CONFIG_DIR`; if it fails, report to the user rather than proceeding.
 3. **Missing remote.** Zeroshot resolves issue numbers from the repo's `origin` remote. Ensure the cloned repo has a GitHub `origin`.
-4. **Blocking on a long run.** Always use `-d` (daemon mode). Without it, hermes is blocked for the full cluster duration.
+4. **Streaming logs.** Never use `zeroshot logs -f` or `-w` — they stream indefinitely and stall the agent. Use `zeroshot status <id>` in a short polling loop instead.
 
 ## Verification Checklist
 

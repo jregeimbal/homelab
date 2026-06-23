@@ -213,10 +213,8 @@ spec:
               mkdir -p /opt/data/home/.config/opencode
               cp /opt/config-defaults/opencode/opencode.json /opt/data/home/.config/opencode/opencode.json
             fi
-            if [ ! -f /opt/data/skills/autonomous-ai-agents/zeroshot/SKILL.md ]; then
-              mkdir -p /opt/data/skills/autonomous-ai-agents/zeroshot
-              cp /opt/config-defaults/hermes-skills/autonomous-ai-agents/zeroshot/SKILL.md /opt/data/skills/autonomous-ai-agents/zeroshot/SKILL.md
-            fi
+            mkdir -p /opt/data/skills/autonomous-ai-agents/zeroshot
+            cp /opt/config-defaults/hermes-skills/autonomous-ai-agents/zeroshot/SKILL.md /opt/data/skills/autonomous-ai-agents/zeroshot/SKILL.md
         command:
           - /bin/sh
           - -ec

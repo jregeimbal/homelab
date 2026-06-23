@@ -4,10 +4,16 @@ name: Docker Build
 on:
   push:
     branches: [main]
-    paths: [Dockerfile]
+    paths:
+      - Dockerfile
+      - requirements.txt
+      - assets/**
   pull_request:
     branches: [main]
-    paths: [Dockerfile]
+    paths:
+      - Dockerfile
+      - requirements.txt
+      - assets/**
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
