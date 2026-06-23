@@ -5,6 +5,8 @@ from pathlib import Path
 
 import pytest
 
+collect_ignore_glob = ["fixture/*.py"]
+
 FIXTURE_DIR = Path(__file__).parent / "fixture"
 DEFAULT_IMAGE = "ghcr.io/jregeimbal/hermes-agent-jregeimbal-homelab:local-dev"
 
@@ -13,9 +15,11 @@ DEFAULT_IMAGE = "ghcr.io/jregeimbal/hermes-agent-jregeimbal-homelab:local-dev"
 def tmp_repo(tmp_path):
     data_dir = tmp_path / "data"
     repo_dir = data_dir / "validation-repo"
-    shutil.copytree(FIXTURE_DIR, repo_dir, ignore=shutil.ignore_patterns("expected"))
+    shutil.copytree(FIXTURE_DIR, repo_dir, ignore=shutil.ignore_patterns("expected", "__pycache__", ".pytest_cache", "*.pyc"))
     data_dir.chmod(0o777)
     repo_dir.chmod(0o777)
+    for p in repo_dir.rglob("*"):
+        p.chmod(0o777)
     subprocess.run(["git", "init"], cwd=repo_dir, check=True, capture_output=True)
     subprocess.run(["git", "add", "."], cwd=repo_dir, check=True, capture_output=True)
     subprocess.run(

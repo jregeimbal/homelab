@@ -102,7 +102,7 @@ export OPENCODE_CONFIG_PATH=./scripts/validate-zeroshot/opencode-openrouter.json
 pytest scripts/validate-zeroshot/ -v
 ```
 
-A `opencode-openrouter.json` example config is included in the fixture directory for reference.
+A `opencode-openrouter.json` example config is included in the `scripts/validate-zeroshot/` directory for reference.
 
 ### `test_zeroshot_skill.py` — `test_zeroshot_fixes_calculator`
 
