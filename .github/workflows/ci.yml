@@ -107,3 +107,40 @@ jobs:
                   print(e)
               sys.exit(1)
           "
+
+  zeroshot-integration:
+    name: Zeroshot Integration (claude)
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    needs: [yaml-lint, k8s-validation, secret-scanning, json-lint]
+    if: github.event_name == 'pull_request'
+    permissions:
+      contents: read
+      packages: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Pull hermes image
+        run: docker pull ghcr.io/jregeimbal/hermes-agent-jregeimbal-homelab:latest
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install test dependencies
+        run: pip install -r tests/requirements.txt
+
+      - name: Run zeroshot integration tests
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY_INTEGRATION_TESTS }}
+          HERMES_IMAGE: ghcr.io/jregeimbal/hermes-agent-jregeimbal-homelab:latest
+          ZEROSHOT_TIMEOUT: "2400"
+        run: pytest tests/integration/zeroshot/ -v --reruns 1 --reruns-delay 30

@@ -1,7 +1,7 @@
 ---
 name: zeroshot
-description: Use when the user asks to implement a GitHub issue using zeroshot, run a multi-agent coding workflow, or autonomously implement and verify a code change with a resulting PR. Launches zeroshot in daemon mode (--pr --provider opencode -d), monitors progress via logs, and reports the final outcome.
-version: 1.1.0
+description: Use when the user asks to implement a GitHub issue using zeroshot, run a multi-agent coding workflow, or autonomously implement and verify a code change with a resulting PR. Supports opencode (LM Studio, local) and claude (Anthropic API) providers. Launches zeroshot in daemon mode (--pr --provider <provider> -d), monitors progress via logs, and reports the final outcome.
+version: 1.2.0
 author: Jon Regeimbal
 license: MIT
 platforms: [linux, macos]
@@ -18,6 +18,17 @@ metadata:
 Zeroshot orchestrates planner → implementer → validators in an isolated git worktree. Independent validators verify the work without seeing the implementer's reasoning (blind validation), looping until the change is verified or rejected. Tasks scale automatically: trivial tasks use 1 agent, critical tasks use up to 7. Use it when the user wants autonomous multi-agent implementation of a GitHub issue with a resulting PR.
 
 Run in daemon mode (`-d`) so hermes is not blocked for the entire run — zeroshot clusters can take 30–90 minutes for non-trivial tasks.
+
+## Provider Selection
+
+Choose a provider based on what's available in the environment:
+
+| Provider | Flag | When to use |
+|---|---|---|
+| `opencode` | `--provider opencode` | Default for local dev. Uses LM Studio via the baked-in opencode config. |
+| `claude` | `--provider claude` | Anthropic API (requires `ANTHROPIC_API_KEY`). Stronger reasoning, slower, costs tokens. |
+
+If the user doesn't specify, default to `opencode` for local repos and `claude` when the user mentions Anthropic or wants higher-quality output.
 
 ## When to Use
 
@@ -44,7 +55,8 @@ Don't use for:
 
 3. **Launch zeroshot in daemon mode** from the repo root:
    ```bash
-   zeroshot run <issue_number> --pr --provider opencode -d
+   zeroshot run <issue_number> --pr --provider opencode -d   # local dev (LM Studio)
+   zeroshot run <issue_number> --pr --provider claude -d     # Anthropic API
    ```
    For a markdown file:
    ```bash
@@ -73,7 +85,7 @@ Don't use for:
    - `REJECTED` — zeroshot exhausted retries. Report the failure summary and ask whether to resume or adjust.
    - To resume after failure or interruption:
      ```bash
-     zeroshot resume <cluster-id> --provider opencode
+     zeroshot resume <cluster-id> --provider opencode   # or --provider claude
      ```
 
 6. **Remove the worktree** once report was sent to the user:
@@ -104,6 +116,6 @@ zeroshot resume <cluster-id>     # resume from last persisted checkpoint
 - [ ] `owner/repo` confirmed with the user
 - [ ] Repo cloned and working directory is the repo root
 - [ ] `gh auth status` passes
-- [ ] `zeroshot run` command includes `-d --pr --provider opencode`
+- [ ] `zeroshot run` command includes `-d --pr --provider <opencode|claude>`
 - [ ] Cluster ID recorded from launch output
 - [ ] Outcome (PR URL or failure summary) reported to the user
