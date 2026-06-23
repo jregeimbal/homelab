@@ -16,7 +16,8 @@ PROMPT = (
     'Run: zeroshot run "implement add_numbers in calculator.py so that '
     'test_calculator.py passes" --provider opencode '
     "(this is a local repo with no GitHub remote — do not use --pr). "
-    "Poll zeroshot status until VERIFIED or REJECTED and report the outcome."
+    "Poll zeroshot status until the cluster finishes. "
+    "End your response with exactly one of these lines: 'Outcome: VERIFIED' or 'Outcome: REJECTED'."
 )
 
 
@@ -57,9 +58,10 @@ def test_function_body_stmts_raises_for_unknown_function():
 # --- Integration test ---
 
 def test_zeroshot_fixes_calculator(tmp_repo, hermes_image, docker_env):
-    cmd = [
-        "docker", "run", "--rm",
-        "--network", "host",
+    cmd = ["docker", "run", "--rm", "--network", "host"]
+    if docker_env["lmstudio_add_host"]:
+        cmd += ["--add-host", docker_env["lmstudio_add_host"]]
+    cmd += [
         "-v", f"{tmp_repo}:/opt/data",
         "-e", "HERMES_HOME=/opt/data",
         "-e", "OPENCODE_TELEMETRY_DISABLED=1",
@@ -69,6 +71,7 @@ def test_zeroshot_fixes_calculator(tmp_repo, hermes_image, docker_env):
     if docker_env["auth_token"]:
         cmd += ["-e", f"ANTHROPIC_AUTH_TOKEN={docker_env['auth_token']}"]
     if docker_env["opencode_config_path"]:
+        # Override the pre-seeded opencode.json with a custom provider config
         cmd += [
             "-v",
             f"{docker_env['opencode_config_path']}:/opt/data/home/.config/opencode/opencode.json:ro",
@@ -78,23 +81,25 @@ def test_zeroshot_fixes_calculator(tmp_repo, hermes_image, docker_env):
     result = subprocess.run(cmd, capture_output=True, text=True, timeout=ZEROSHOT_TIMEOUT)
     output = result.stdout + result.stderr
 
-    assert "VERIFIED" in output, (
-        f"Expected VERIFIED in hermes output.\n--- OUTPUT ---\n{output}"
-    )
-    assert "REJECTED" not in output, (
-        f"Zeroshot REJECTED the implementation.\n--- OUTPUT ---\n{output}"
-    )
-    assert "add_numbers" in output, (
-        f"Expected mention of add_numbers in hermes summary.\n--- OUTPUT ---\n{output}"
-    )
-
+    # Primary: the file was actually fixed (most reliable evidence that zeroshot ran)
     changed = tmp_repo / "validation-repo" / "calculator.py"
-    assert changed.exists(), f"calculator.py missing at {changed}"
-
+    assert changed.exists(), f"calculator.py missing at {changed}\n--- OUTPUT ---\n{output}"
     actual = _function_body_stmts(changed.read_text(), "add_numbers")
     expected = _function_body_stmts(EXPECTED_CALCULATOR.read_text(), "add_numbers")
     assert actual == expected, (
         f"Implementation does not match expected.\n"
         f"Actual:\n{changed.read_text()}\n"
-        f"Expected:\n{EXPECTED_CALCULATOR.read_text()}"
+        f"Expected:\n{EXPECTED_CALCULATOR.read_text()}\n"
+        f"--- OUTPUT ---\n{output}"
+    )
+
+    # Secondary: hermes reported success (prompt asks for explicit VERIFIED/REJECTED)
+    assert "REJECTED" not in output, (
+        f"Zeroshot REJECTED the implementation.\n--- OUTPUT ---\n{output}"
+    )
+    assert "VERIFIED" in output, (
+        f"Expected VERIFIED in hermes output.\n--- OUTPUT ---\n{output}"
+    )
+    assert "add_numbers" in output, (
+        f"Expected mention of add_numbers in hermes summary.\n--- OUTPUT ---\n{output}"
     )
