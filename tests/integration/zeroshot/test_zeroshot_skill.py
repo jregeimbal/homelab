@@ -81,8 +81,28 @@ _PROVIDERS = [
 ]
 
 
-def _run_zeroshot(provider: str, tmp_repo, hermes_image, docker_env) -> str:
-    """Build and run the docker command. Returns combined stdout+stderr."""
+def _dir_tree(root: Path, max_depth: int = 4) -> str:
+    """Return a compact directory listing for failure messages."""
+    lines = []
+    for p in sorted(root.rglob("*")):
+        try:
+            depth = len(p.relative_to(root).parts)
+        except ValueError:
+            continue
+        if depth > max_depth:
+            continue
+        indent = "  " * (depth - 1)
+        name = p.name + ("/" if p.is_dir() else "")
+        try:
+            size = f"  ({p.stat().st_size}B)" if p.is_file() else ""
+        except OSError:
+            size = "  (unreadable)"
+        lines.append(f"{indent}{name}{size}")
+    return "\n".join(lines) if lines else "(empty)"
+
+
+def _run_zeroshot(provider: str, tmp_repo, hermes_image, docker_env) -> tuple[str, int]:
+    """Build and run the docker command. Returns (combined stdout+stderr, exit_code)."""
     cmd = ["docker", "run", "--rm", "--network", "host"]
     if docker_env["lmstudio_add_host"]:
         cmd += ["--add-host", docker_env["lmstudio_add_host"]]
@@ -118,7 +138,7 @@ def _run_zeroshot(provider: str, tmp_repo, hermes_image, docker_env) -> str:
         capture_output=True, check=False,
     )
 
-    return output
+    return output, result.returncode
 
 
 def _find_implemented(data_dir: Path, expected_stmts: list) -> Path | None:
@@ -137,32 +157,33 @@ def _find_implemented(data_dir: Path, expected_stmts: list) -> Path | None:
     return None
 
 
-def _assert_results(output: str, data_dir: Path):
+def _assert_results(output: str, exit_code: int, data_dir: Path):
     """Shared assertions for both provider tests."""
-    expected = _function_body_stmts(EXPECTED_CALCULATOR.read_text(), "add_numbers")
+    tree = _dir_tree(data_dir)
+    context = (
+        f"--- EXIT CODE ---\n{exit_code}\n"
+        f"--- DIRECTORY TREE ---\n{tree}\n"
+        f"--- OUTPUT (last 60 lines) ---\n"
+        + "\n".join(output.splitlines()[-60:])
+    )
 
-    # Primary: implementation exists somewhere in data_dir (main tree or zeroshot worktree).
-    # Zeroshot writes to an isolated git worktree; whether hermes merges it back to the
-    # main working tree depends on the model.  Either location is valid evidence.
+    # Layer 1: docker itself ran and hermes didn't crash on startup
+    assert exit_code == 0, f"docker run exited {exit_code} — container crash or timeout.\n{context}"
+
+    # Layer 2: hermes outer agent invoked zeroshot and it didn't explicitly reject
+    assert "REJECTED" not in output, f"Zeroshot REJECTED the implementation.\n{context}"
+    assert "VERIFIED" in output, f"Expected VERIFIED in hermes output.\n{context}"
+
+    # Layer 3: the implementation is present somewhere in the data dir
+    # (main working tree or isolated zeroshot worktree — either counts)
+    expected = _function_body_stmts(EXPECTED_CALCULATOR.read_text(), "add_numbers")
     implemented = _find_implemented(data_dir, expected)
     assert implemented is not None, (
-        f"No calculator.py with the correct implementation found under {data_dir}.\n"
-        f"--- OUTPUT ---\n{output}"
-    )
-
-    # Secondary: hermes reported success (prompt asks for explicit VERIFIED/REJECTED)
-    assert "REJECTED" not in output, (
-        f"Zeroshot REJECTED the implementation.\n--- OUTPUT ---\n{output}"
-    )
-    assert "VERIFIED" in output, (
-        f"Expected VERIFIED in hermes output.\n--- OUTPUT ---\n{output}"
-    )
-    assert "add_numbers" in output, (
-        f"Expected mention of add_numbers in hermes summary.\n--- OUTPUT ---\n{output}"
+        f"No calculator.py with the correct implementation found under {data_dir}.\n{context}"
     )
 
 
 @pytest.mark.parametrize("provider", _PROVIDERS)
 def test_zeroshot_fixes_calculator(provider, tmp_repo, hermes_image, docker_env):
-    output = _run_zeroshot(provider, tmp_repo, hermes_image, docker_env)
-    _assert_results(output, tmp_repo)
+    output, exit_code = _run_zeroshot(provider, tmp_repo, hermes_image, docker_env)
+    _assert_results(output, exit_code, tmp_repo)

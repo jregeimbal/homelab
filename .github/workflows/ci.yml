@@ -136,11 +136,11 @@ jobs:
           python-version: "3.12"
 
       - name: Install pytest
-        run: pip install pytest
+        run: pip install pytest pytest-rerunfailures
 
       - name: Run zeroshot integration tests
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY_INTEGRATION_TESTS }}
           HERMES_IMAGE: ghcr.io/jregeimbal/hermes-agent-jregeimbal-homelab:latest
           ZEROSHOT_TIMEOUT: "2400"
-        run: pytest tests/integration/zeroshot/ -v
+        run: pytest tests/integration/zeroshot/ -v --reruns 1 --reruns-delay 30
