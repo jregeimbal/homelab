@@ -27,6 +27,12 @@ echo "=== Verifying zeroshot CLI ==="
 docker run --rm --entrypoint "" "${IMAGE}" zeroshot --version
 
 echo ""
+echo "=== Verifying config-defaults: gitconfig ==="
+docker run --rm --entrypoint "" "${IMAGE}" test -f /opt/config-defaults/git/gitconfig \
+  || { echo "ERROR: Missing /opt/config-defaults/git/gitconfig"; exit 1; }
+echo "gitconfig present"
+
+echo ""
 echo "=== Verifying config-defaults: claude settings ==="
 docker run --rm --entrypoint "" "${IMAGE}" test -f /opt/config-defaults/claude/settings.json \
   || { echo "ERROR: Missing /opt/config-defaults/claude/settings.json"; exit 1; }

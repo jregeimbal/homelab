@@ -202,6 +202,9 @@ spec:
       - args:
           - |
             set -eu
+            if [ ! -f /opt/data/home/.gitconfig ]; then
+              cp /opt/config-defaults/git/gitconfig /opt/data/home/.gitconfig
+            fi
             if [ ! -f /opt/data/home/.claude/settings.json ]; then
               mkdir -p /opt/data/home/.claude
               cp /opt/config-defaults/claude/settings.json /opt/data/home/.claude/settings.json
