@@ -13,7 +13,7 @@ A local validation test that verifies the hermes zeroshot skill works end-to-end
 ## Non-Goals
 
 - Testing GitHub PR creation (`--pr` is omitted; this is a local-only test)
-- Testing the LLM model itself; we assume LM Studio at `jonathans-mac-studio:1234` is available and working
+- Testing the LLM model itself; we assume the configured inference provider (`ANTHROPIC_BASE_URL`) is available and working
 
 ## Architecture
 
@@ -75,21 +75,53 @@ def add_numbers(a, b):
 
 Returns the image tag from the `HERMES_IMAGE` env var, defaulting to `ghcr.io/jregeimbal/hermes-agent-jregeimbal-homelab:local-dev`.
 
+### `conftest.py` — provider env passthrough
+
+All provider configuration comes from the caller's environment — nothing is hardcoded in the test. The following env vars are read at test time and forwarded into the container:
+
+| Env var | Required | Description |
+|---|---|---|
+| `ANTHROPIC_BASE_URL` | Yes | Base URL for the inference API (e.g. `http://jonathans-mac-studio:1234` for LM Studio, `https://openrouter.ai/api/v1` for OpenRouter) |
+| `ANTHROPIC_AUTH_TOKEN` | Yes | Auth token for the inference API (`lmstudio` for LM Studio, an API key for cloud providers) |
+| `OPENCODE_CONFIG_PATH` | No | Local path to a custom `opencode.json` to mount over `/opt/data/home/.config/opencode/opencode.json`. Use this to switch opencode to a different provider (e.g. OpenRouter). If unset, the image's default config is used. |
+
+The test fails with a clear error at collection time if `ANTHROPIC_BASE_URL` or `ANTHROPIC_AUTH_TOKEN` are not set.
+
+### Supported provider configurations
+
+**LM Studio (default local dev):**
+```bash
+export ANTHROPIC_BASE_URL=http://jonathans-mac-studio:1234
+export ANTHROPIC_AUTH_TOKEN=lmstudio
+pytest scripts/validate-zeroshot/ -v
+```
+
+**OpenRouter (cloud):**
+```bash
+export ANTHROPIC_BASE_URL=https://openrouter.ai/api/v1
+export ANTHROPIC_AUTH_TOKEN=<openrouter-api-key>
+export OPENCODE_CONFIG_PATH=./scripts/validate-zeroshot/opencode-openrouter.json
+pytest scripts/validate-zeroshot/ -v
+```
+
+A `opencode-openrouter.json` example config is included in the fixture directory for reference.
+
 ### `test_zeroshot_skill.py` — `test_zeroshot_fixes_calculator`
 
 ```
 docker run --rm
-  --network host                              # so jonathans-mac-studio:1234 resolves
+  --network host                              # LAN hostnames (e.g. LM Studio) resolve inside container
   -v <tmp_path/data>:/opt/data
+  [-v <OPENCODE_CONFIG_PATH>:/opt/data/home/.config/opencode/opencode.json:ro]  # if set
   -e HERMES_HOME=/opt/data
-  -e ANTHROPIC_BASE_URL=http://jonathans-mac-studio:1234
-  -e ANTHROPIC_AUTH_TOKEN=lmstudio
+  -e ANTHROPIC_BASE_URL                       # forwarded from caller env
+  -e ANTHROPIC_AUTH_TOKEN                     # forwarded from caller env
   -e OPENCODE_TELEMETRY_DISABLED=1
   <image>
   hermes -z "<PROMPT>" --accept-hooks --yolo
 ```
 
-Capture stdout+stderr with a 1800-second timeout (30 minutes). The test blocks until the container exits.
+Capture stdout+stderr with a configurable timeout (default 1800 s). The test blocks until the container exits.
 
 ## Prompt
 
@@ -115,15 +147,16 @@ The AST comparison (`ast.parse` + `ast.dump`) compares the compiled function bod
 
 ## Docker Run Details
 
-- `--network host` is used on Linux so the container can reach `jonathans-mac-studio:1234` on the LAN. On macOS Docker Desktop, `--network host` is a no-op; the container uses the host network stack via Docker's default bridge, and `jonathans-mac-studio` must resolve via LAN DNS/mDNS (same as production k8s).
+- `--network host` is used on Linux so LAN hostnames (e.g. `jonathans-mac-studio`) resolve inside the container. On macOS Docker Desktop, `--network host` is a no-op; the container uses Docker's default bridge, and LAN hostnames must resolve via mDNS/DNS (same as production k8s). For cloud providers (OpenRouter), network access goes through the normal internet path and `--network host` is not needed but is harmless.
 - `--accept-hooks --yolo` suppress hermes permission prompts so the container runs unattended.
-- The container is run as the image's default user (uid 10000). The `tmp_path` volume is created by the test runner (root or the current user); if permission errors occur, the test fixture should `chmod 777` the data dir before mounting.
+- The container runs as uid 10000. The `tmp_path` volume is created by the test runner; if permission errors occur, the fixture should `chmod 777` the data dir before mounting.
 - `OPENCODE_TELEMETRY_DISABLED=1` prevents opencode from phoning home during tests.
+- `ANTHROPIC_BASE_URL` and `ANTHROPIC_AUTH_TOKEN` are passed through from the caller's environment without defaults — the test fails fast at collection time if either is missing.
 
 ## Timeout and CI Considerations
 
 - Default timeout: 1800 s (30 min). Configurable via `ZEROSHOT_TIMEOUT` env var.
-- For CI, this test should be in a separate job gated behind a label or manual trigger (not part of the fast lint/validate checks), since it requires a running LM Studio instance and takes up to 30 minutes.
+- For CI, this test should be in a separate job gated behind a label or manual trigger (not part of the fast lint/validate checks). LM Studio runs require mac-studio to be reachable; cloud provider runs (OpenRouter) can run in any CI environment with network access.
 
 ## File Placement
 
