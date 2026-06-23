@@ -37,11 +37,11 @@ def _dotenv(key: str) -> str | None:
 
 
 # Read auth vars once at import time so skip marks can reference them
-ANTHROPIC_AUTH_TOKEN = _dotenv("ANTHROPIC_AUTH_TOKEN")
+ANTHROPIC_API_KEY = _dotenv("ANTHROPIC_API_KEY")
 ANTHROPIC_BASE_URL = _dotenv("ANTHROPIC_BASE_URL")
 
 # Hermes config.yaml seeded into tmp_repo so the container doesn't need interactive setup.
-# CI: use Anthropic API (ANTHROPIC_AUTH_TOKEN from env, no ANTHROPIC_BASE_URL redirect).
+# CI: use Anthropic API (ANTHROPIC_API_KEY from env, no ANTHROPIC_BASE_URL redirect).
 # Local dev: use LM Studio via custom OpenAI-compatible endpoint.
 if IS_CI:
     _HERMES_CONFIG = f"""\
@@ -140,7 +140,7 @@ def hermes_image():
 def docker_env():
     return {
         "base_url": ANTHROPIC_BASE_URL,
-        "auth_token": ANTHROPIC_AUTH_TOKEN,
+        "auth_token": ANTHROPIC_API_KEY,
         "opencode_config_path": os.environ.get("OPENCODE_CONFIG_PATH"),
         # --add-host entry for the LM Studio host (mDNS names don't resolve in Docker on macOS)
         "lmstudio_add_host": _resolve_add_host(LMSTUDIO_BASE_URL),

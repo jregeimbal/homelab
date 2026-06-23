@@ -83,7 +83,7 @@ All provider-override configuration is optional. The container's baked-in `openc
 | Env var | Required | Description |
 |---|---|---|
 | `ANTHROPIC_BASE_URL` | No | Override the inference API base URL (e.g. `https://openrouter.ai/api/v1` for OpenRouter). Omit to use the image's baked-in opencode config. |
-| `ANTHROPIC_AUTH_TOKEN` | No | Override the auth token (e.g. an OpenRouter API key). Omit for LM Studio, which needs no API key. |
+| `ANTHROPIC_API_KEY` | No | Override the auth token (e.g. an OpenRouter API key). Omit for LM Studio, which needs no API key. |
 | `OPENCODE_CONFIG_PATH` | No | Local path to a custom `opencode.json` to mount over `/opt/data/home/.config/opencode/opencode.json`. Use this to switch opencode to a different provider (e.g. OpenRouter). If unset, the image's default config is used. |
 
 Each var is only added to the `docker run` command if it is set in the caller's environment. If none are set, the container runs with its defaults.
@@ -98,7 +98,7 @@ pytest tests/integration/zeroshot/ -v
 **OpenRouter (cloud):**
 ```bash
 export ANTHROPIC_BASE_URL=https://openrouter.ai/api/v1
-export ANTHROPIC_AUTH_TOKEN=<openrouter-api-key>
+export ANTHROPIC_API_KEY=<openrouter-api-key>
 export OPENCODE_CONFIG_PATH=./tests/integration/zeroshot/opencode-openrouter.json
 pytest tests/integration/zeroshot/ -v
 ```
@@ -114,7 +114,7 @@ docker run --rm
   [-v <OPENCODE_CONFIG_PATH>:/opt/data/home/.config/opencode/opencode.json:ro]  # if OPENCODE_CONFIG_PATH is set
   -e HERMES_HOME=/opt/data
   [-e ANTHROPIC_BASE_URL=...]                 # only if set in caller env
-  [-e ANTHROPIC_AUTH_TOKEN=...]               # only if set in caller env
+  [-e ANTHROPIC_API_KEY=...]               # only if set in caller env
   -e OPENCODE_TELEMETRY_DISABLED=1
   <image>
   hermes -z "<PROMPT>" --accept-hooks --yolo
@@ -150,7 +150,7 @@ The AST comparison (`ast.parse` + `ast.dump`) compares the compiled function bod
 - `--accept-hooks --yolo` suppress hermes permission prompts so the container runs unattended.
 - The container runs as uid 10000. The `tmp_path` volume is created by the test runner; if permission errors occur, the fixture should `chmod 777` the data dir before mounting.
 - `OPENCODE_TELEMETRY_DISABLED=1` prevents opencode from phoning home during tests.
-- `ANTHROPIC_BASE_URL` and `ANTHROPIC_AUTH_TOKEN` are optional. Each is added to the `docker run` command only when present in the caller's environment. For local dev with LM Studio, neither is needed since the image's `opencode.json` already has the endpoint baked in.
+- `ANTHROPIC_BASE_URL` and `ANTHROPIC_API_KEY` are optional. Each is added to the `docker run` command only when present in the caller's environment. For local dev with LM Studio, neither is needed since the image's `opencode.json` already has the endpoint baked in.
 
 ## Timeout and CI Considerations
 

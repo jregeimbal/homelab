@@ -74,8 +74,8 @@ _PROVIDERS = [
         "claude",
         id="claude",
         marks=pytest.mark.skipif(
-            not _conf.ANTHROPIC_AUTH_TOKEN,
-            reason="ANTHROPIC_AUTH_TOKEN not set (add to .env or environment)",
+            not _conf.ANTHROPIC_API_KEY,
+            reason="ANTHROPIC_API_KEY not set (add to .env or environment)",
         ),
     ),
 ]
@@ -94,8 +94,8 @@ def _run_zeroshot(provider: str, tmp_repo, hermes_image, docker_env) -> tuple[st
     if docker_env["base_url"]:
         cmd += ["-e", f"ANTHROPIC_BASE_URL={docker_env['base_url']}"]
     if docker_env["auth_token"]:
-        # ANTHROPIC_AUTH_TOKEN: consumed by claude-code sub-agents (zeroshot --provider claude)
-        # ANTHROPIC_API_KEY:    consumed by hermes outer agent when provider: anthropic
+        # ANTHROPIC_AUTH_TOKEN: read by claude-code sub-agents (zeroshot --provider claude)
+        # ANTHROPIC_API_KEY:    read by hermes outer agent when provider: anthropic in config.yaml
         cmd += [
             "-e", f"ANTHROPIC_AUTH_TOKEN={docker_env['auth_token']}",
             "-e", f"ANTHROPIC_API_KEY={docker_env['auth_token']}",

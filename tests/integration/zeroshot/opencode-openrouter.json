@@ -6,7 +6,7 @@
       "npm": "@openrouter/ai-sdk-provider",
       "name": "OpenRouter",
       "options": {
-        "apiKey": "${ANTHROPIC_AUTH_TOKEN}"
+        "apiKey": "${ANTHROPIC_API_KEY}"
       },
       "models": {
         "anthropic/claude-sonnet-4-5": {

@@ -11,7 +11,7 @@
 ## Global Constraints
 
 - No new Python dependencies beyond `pytest` — everything else is stdlib.
-- All inference provider config comes from caller env vars (`ANTHROPIC_BASE_URL`, `ANTHROPIC_AUTH_TOKEN`) — nothing hardcoded.
+- All inference provider config comes from caller env vars (`ANTHROPIC_BASE_URL`, `ANTHROPIC_API_KEY`) — nothing hardcoded.
 - Test lives under `tests/integration/zeroshot/` alongside `scripts/validate-image.sh`.
 - The integration test (`test_zeroshot_fixes_calculator`) requires Docker and a reachable inference endpoint; the helper unit tests do not.
 - Default timeout: 1800 s, overridable via `ZEROSHOT_TIMEOUT` env var.
@@ -126,7 +126,7 @@ Create `tests/integration/zeroshot/opencode-openrouter.json`:
       "npm": "@openrouter/ai-sdk-provider",
       "name": "OpenRouter",
       "options": {
-        "apiKey": "${ANTHROPIC_AUTH_TOKEN}"
+        "apiKey": "${ANTHROPIC_API_KEY}"
       },
       "models": {
         "anthropic/claude-sonnet-4-5": {
@@ -219,7 +219,7 @@ def hermes_image():
 def docker_env():
     return {
         "base_url": os.environ.get("ANTHROPIC_BASE_URL"),
-        "auth_token": os.environ.get("ANTHROPIC_AUTH_TOKEN"),
+        "auth_token": os.environ.get("ANTHROPIC_API_KEY"),
         "opencode_config_path": os.environ.get("OPENCODE_CONFIG_PATH"),
     }
 ```
@@ -385,7 +385,7 @@ def test_zeroshot_fixes_calculator(tmp_repo, hermes_image, docker_env):
     if docker_env["base_url"]:
         cmd += ["-e", f"ANTHROPIC_BASE_URL={docker_env['base_url']}"]
     if docker_env["auth_token"]:
-        cmd += ["-e", f"ANTHROPIC_AUTH_TOKEN={docker_env['auth_token']}"]
+        cmd += ["-e", f"ANTHROPIC_API_KEY={docker_env['auth_token']}"]
     if docker_env["opencode_config_path"]:
         cmd += [
             "-v",
@@ -460,7 +460,7 @@ pytest tests/integration/zeroshot/ -v
 For OpenRouter:
 ```bash
 export ANTHROPIC_BASE_URL=https://openrouter.ai/api/v1
-export ANTHROPIC_AUTH_TOKEN=<your-openrouter-key>
+export ANTHROPIC_API_KEY=<your-openrouter-key>
 export OPENCODE_CONFIG_PATH=tests/integration/zeroshot/opencode-openrouter.json
 pytest tests/integration/zeroshot/ -v
 ```

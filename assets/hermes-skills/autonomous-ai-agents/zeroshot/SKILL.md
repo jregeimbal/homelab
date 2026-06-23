@@ -26,7 +26,7 @@ Choose a provider based on what's available in the environment:
 | Provider | Flag | When to use |
 |---|---|---|
 | `opencode` | `--provider opencode` | Default for local dev. Uses LM Studio via the baked-in opencode config. |
-| `claude` | `--provider claude` | Anthropic API (requires `ANTHROPIC_AUTH_TOKEN`). Stronger reasoning, slower, costs tokens. |
+| `claude` | `--provider claude` | Anthropic API (requires `ANTHROPIC_API_KEY`). Stronger reasoning, slower, costs tokens. |
 
 If the user doesn't specify, default to `opencode` for local repos and `claude` when the user mentions Anthropic or wants higher-quality output.
 
