@@ -3,3 +3,6 @@ images/
 kubeconfig
 secrets/plaintext/
 .python-version
+__pycache__/
+*.pyc
+.pytest_cache/
