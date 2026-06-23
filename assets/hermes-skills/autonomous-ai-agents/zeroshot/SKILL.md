@@ -26,7 +26,7 @@ Run in daemon mode (`-d`) so hermes is not blocked for the entire run — zerosh
 - User wants a verified PR produced from an issue description or markdown spec
 
 Don't use for:
-- Simple one-shot edits (use the terminal directly)
+- Simple one-shot edits (use opencode, claude-code, codex, or the terminal directly)
 - Tasks without a GitHub issue number, markdown file, or clear inline description
 
 ## Steps
@@ -75,6 +75,12 @@ Don't use for:
      ```bash
      zeroshot resume <cluster-id> --provider opencode
      ```
+
+6. **Remove the worktree** once report was sent to the user:
+   (Optional) Clean up the worktree to avoid clutter.  Find the worktree path with `git worktree list | grep <cluster-id>` and remove it:
+   ```bash
+   git worktree remove <worktree-path>/<cluster-id>
+   ```
 
 ## Management Commands
 
