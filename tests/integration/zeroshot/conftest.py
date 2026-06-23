@@ -15,6 +15,26 @@ DEFAULT_IMAGE = "ghcr.io/jregeimbal/hermes-agent-jregeimbal-homelab:local-dev"
 LMSTUDIO_BASE_URL = os.environ.get("LMSTUDIO_BASE_URL", "http://jonathans-mac-studio:1234/v1")
 LMSTUDIO_MODEL = os.environ.get("LMSTUDIO_MODEL", "qwen/qwen3.6-35b-a3b")
 
+
+def _dotenv(key: str) -> str | None:
+    """Read a value from the environment, falling back to the repo-root .env file."""
+    val = os.environ.get(key)
+    if val:
+        return val
+    env_file = Path(__file__).parents[3] / ".env"
+    if env_file.exists():
+        for line in env_file.read_text().splitlines():
+            if "=" in line and not line.startswith("#"):
+                k, _, v = line.partition("=")
+                if k.strip() == key:
+                    return v.strip()
+    return None
+
+
+# Read auth vars once at import time so skip marks can reference them
+ANTHROPIC_AUTH_TOKEN = _dotenv("ANTHROPIC_AUTH_TOKEN")
+ANTHROPIC_BASE_URL = _dotenv("ANTHROPIC_BASE_URL")
+
 # Minimal hermes config.yaml: sets provider to custom so hermes routes to LM Studio
 # instead of trying to auto-detect an OpenRouter/Anthropic key.
 _HERMES_CONFIG = f"""\
@@ -104,8 +124,8 @@ def hermes_image():
 @pytest.fixture
 def docker_env():
     return {
-        "base_url": os.environ.get("ANTHROPIC_BASE_URL"),
-        "auth_token": os.environ.get("ANTHROPIC_AUTH_TOKEN"),
+        "base_url": ANTHROPIC_BASE_URL,
+        "auth_token": ANTHROPIC_AUTH_TOKEN,
         "opencode_config_path": os.environ.get("OPENCODE_CONFIG_PATH"),
         # --add-host entry for the LM Studio host (mDNS names don't resolve in Docker on macOS)
         "lmstudio_add_host": _resolve_add_host(LMSTUDIO_BASE_URL),

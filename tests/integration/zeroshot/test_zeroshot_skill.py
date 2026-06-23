@@ -5,20 +5,24 @@ from pathlib import Path
 
 import pytest
 
+import conftest as _conf
+
 FIXTURE_DIR = Path(__file__).parent / "fixture"
 EXPECTED_CALCULATOR = FIXTURE_DIR / "expected" / "calculator.py"
 ZEROSHOT_TIMEOUT = int(os.environ.get("ZEROSHOT_TIMEOUT", "1800"))
 
-PROMPT = (
-    "There is a Python project at /opt/data/validation-repo. "
-    "The function add_numbers in calculator.py is not yet implemented (TODO stub) "
-    "and test_calculator.py is currently failing. Please use zeroshot to implement it. "
-    'Run: zeroshot run "implement add_numbers in calculator.py so that '
-    'test_calculator.py passes" --provider opencode '
-    "(this is a local repo with no GitHub remote — do not use --pr). "
-    "Poll zeroshot status until the cluster finishes. "
-    "End your response with exactly one of these lines: 'Outcome: VERIFIED' or 'Outcome: REJECTED'."
-)
+
+def _make_prompt(provider: str) -> str:
+    return (
+        "There is a Python project at /opt/data/validation-repo. "
+        "The function add_numbers in calculator.py is not yet implemented (TODO stub) "
+        "and test_calculator.py is currently failing. Please use zeroshot to implement it. "
+        f'Run: zeroshot run "implement add_numbers in calculator.py so that '
+        f'test_calculator.py passes" --provider {provider} '
+        "(this is a local repo with no GitHub remote — do not use --pr). "
+        "Poll zeroshot status until the cluster finishes. "
+        "End your response with exactly one of these lines: 'Outcome: VERIFIED' or 'Outcome: REJECTED'."
+    )
 
 
 def _function_body_stmts(source: str, name: str) -> list:
@@ -55,9 +59,23 @@ def test_function_body_stmts_raises_for_unknown_function():
         _function_body_stmts(src, "add_numbers")
 
 
-# --- Integration test ---
+# --- Integration tests ---
 
-def test_zeroshot_fixes_calculator(tmp_repo, hermes_image, docker_env):
+_PROVIDERS = [
+    pytest.param("opencode", id="opencode"),
+    pytest.param(
+        "claude",
+        id="claude",
+        marks=pytest.mark.skipif(
+            not _conf.ANTHROPIC_AUTH_TOKEN,
+            reason="ANTHROPIC_AUTH_TOKEN not set (add to .env or environment)",
+        ),
+    ),
+]
+
+
+def _run_zeroshot(provider: str, tmp_repo, hermes_image, docker_env) -> tuple[str, Path]:
+    """Build and run the docker command. Returns (output, changed_file_path)."""
     cmd = ["docker", "run", "--rm", "--network", "host"]
     if docker_env["lmstudio_add_host"]:
         cmd += ["--add-host", docker_env["lmstudio_add_host"]]
@@ -76,13 +94,17 @@ def test_zeroshot_fixes_calculator(tmp_repo, hermes_image, docker_env):
             "-v",
             f"{docker_env['opencode_config_path']}:/opt/data/home/.config/opencode/opencode.json:ro",
         ]
-    cmd += [hermes_image, "hermes", "-z", PROMPT, "--accept-hooks", "--yolo"]
+    cmd += [hermes_image, "hermes", "-z", _make_prompt(provider), "--accept-hooks", "--yolo"]
 
     result = subprocess.run(cmd, capture_output=True, text=True, timeout=ZEROSHOT_TIMEOUT)
     output = result.stdout + result.stderr
-
-    # Primary: the file was actually fixed (most reliable evidence that zeroshot ran)
     changed = tmp_repo / "validation-repo" / "calculator.py"
+    return output, changed
+
+
+def _assert_results(output: str, changed: Path):
+    """Shared assertions for both provider tests."""
+    # Primary: the file was actually fixed (most reliable evidence that zeroshot ran)
     assert changed.exists(), f"calculator.py missing at {changed}\n--- OUTPUT ---\n{output}"
     actual = _function_body_stmts(changed.read_text(), "add_numbers")
     expected = _function_body_stmts(EXPECTED_CALCULATOR.read_text(), "add_numbers")
@@ -103,3 +125,9 @@ def test_zeroshot_fixes_calculator(tmp_repo, hermes_image, docker_env):
     assert "add_numbers" in output, (
         f"Expected mention of add_numbers in hermes summary.\n--- OUTPUT ---\n{output}"
     )
+
+
+@pytest.mark.parametrize("provider", _PROVIDERS)
+def test_zeroshot_fixes_calculator(provider, tmp_repo, hermes_image, docker_env):
+    output, changed = _run_zeroshot(provider, tmp_repo, hermes_image, docker_env)
+    _assert_results(output, changed)
