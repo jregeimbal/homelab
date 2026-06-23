@@ -27,10 +27,22 @@ echo "=== Verifying zeroshot CLI ==="
 docker run --rm --entrypoint "" "${IMAGE}" zeroshot --version
 
 echo ""
-echo "=== Verifying zeroshot skill file ==="
-docker run --rm --entrypoint "" "${IMAGE}" test -f /root/.hermes/skills/software-development/zeroshot/SKILL.md \
-  || { echo "ERROR: Skill file missing at /root/.hermes/skills/software-development/zeroshot/SKILL.md"; exit 1; }
-echo "Skill file present at /root/.hermes/skills/software-development/zeroshot/SKILL.md"
+echo "=== Verifying config-defaults: claude settings ==="
+docker run --rm --entrypoint "" "${IMAGE}" test -f /opt/config-defaults/claude/settings.json \
+  || { echo "ERROR: Missing /opt/config-defaults/claude/settings.json"; exit 1; }
+echo "claude settings present"
+
+echo ""
+echo "=== Verifying config-defaults: opencode config ==="
+docker run --rm --entrypoint "" "${IMAGE}" test -f /opt/config-defaults/opencode/opencode.json \
+  || { echo "ERROR: Missing /opt/config-defaults/opencode/opencode.json"; exit 1; }
+echo "opencode config present"
+
+echo ""
+echo "=== Verifying config-defaults: zeroshot skill ==="
+docker run --rm --entrypoint "" "${IMAGE}" test -f /opt/config-defaults/hermes-skills/software-development/zeroshot/SKILL.md \
+  || { echo "ERROR: Missing /opt/config-defaults/hermes-skills/software-development/zeroshot/SKILL.md"; exit 1; }
+echo "zeroshot skill present"
 
 echo ""
 echo "=== All checks passed ==="
