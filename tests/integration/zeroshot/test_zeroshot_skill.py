@@ -81,8 +81,8 @@ _PROVIDERS = [
 ]
 
 
-def _run_zeroshot(provider: str, tmp_repo, hermes_image, docker_env) -> tuple[str, Path]:
-    """Build and run the docker command. Returns (output, changed_file_path)."""
+def _run_zeroshot(provider: str, tmp_repo, hermes_image, docker_env) -> str:
+    """Build and run the docker command. Returns combined stdout+stderr."""
     cmd = ["docker", "run", "--rm", "--network", "host"]
     if docker_env["lmstudio_add_host"]:
         cmd += ["--add-host", docker_env["lmstudio_add_host"]]
@@ -120,20 +120,35 @@ def _run_zeroshot(provider: str, tmp_repo, hermes_image, docker_env) -> tuple[st
         capture_output=True, check=False,
     )
 
-    changed = tmp_repo / "validation-repo" / "calculator.py"
-    return output, changed
+    return output
 
 
-def _assert_results(output: str, changed: Path):
+def _find_implemented(data_dir: Path, expected_stmts: list) -> Path | None:
+    """Return the first calculator.py under data_dir that has the expected implementation.
+
+    Zeroshot applies changes to a git worktree, which may be anywhere under data_dir
+    rather than the main working tree.  Searching recursively handles both cases.
+    """
+    for candidate in data_dir.rglob("calculator.py"):
+        try:
+            actual = _function_body_stmts(candidate.read_text(), "add_numbers")
+            if actual == expected_stmts:
+                return candidate
+        except (PermissionError, OSError, ValueError, SyntaxError):
+            continue
+    return None
+
+
+def _assert_results(output: str, data_dir: Path):
     """Shared assertions for both provider tests."""
-    # Primary: the file was actually fixed (most reliable evidence that zeroshot ran)
-    assert changed.exists(), f"calculator.py missing at {changed}\n--- OUTPUT ---\n{output}"
-    actual = _function_body_stmts(changed.read_text(), "add_numbers")
     expected = _function_body_stmts(EXPECTED_CALCULATOR.read_text(), "add_numbers")
-    assert actual == expected, (
-        f"Implementation does not match expected.\n"
-        f"Actual:\n{changed.read_text()}\n"
-        f"Expected:\n{EXPECTED_CALCULATOR.read_text()}\n"
+
+    # Primary: implementation exists somewhere in data_dir (main tree or zeroshot worktree).
+    # Zeroshot writes to an isolated git worktree; whether hermes merges it back to the
+    # main working tree depends on the model.  Either location is valid evidence.
+    implemented = _find_implemented(data_dir, expected)
+    assert implemented is not None, (
+        f"No calculator.py with the correct implementation found under {data_dir}.\n"
         f"--- OUTPUT ---\n{output}"
     )
 
@@ -151,5 +166,5 @@ def _assert_results(output: str, changed: Path):
 
 @pytest.mark.parametrize("provider", _PROVIDERS)
 def test_zeroshot_fixes_calculator(provider, tmp_repo, hermes_image, docker_env):
-    output, changed = _run_zeroshot(provider, tmp_repo, hermes_image, docker_env)
-    _assert_results(output, changed)
+    output = _run_zeroshot(provider, tmp_repo, hermes_image, docker_env)
+    _assert_results(output, tmp_repo)
