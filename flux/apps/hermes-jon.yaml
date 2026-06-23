@@ -280,7 +280,7 @@ spec:
         type: RuntimeDefault
     persistence:
       enabled: true
-      size: 5Gi
+      size: 30Gi
       storageClass: longhorn
     extraVolumes:
       - name: run-tmp
