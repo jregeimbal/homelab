@@ -129,7 +129,7 @@ spec:
           seccompProfile:
             type: RuntimeDefault
       - name: hermes-desktop
-        image: ghcr.io/jregeimbal/hermes-agent-jregeimbal-homelab:v2026.6.19-792d286
+        image: ghcr.io/jregeimbal/hermes-agent-jregeimbal-homelab:v2026.6.19-fe64a87
         imagePullPolicy: IfNotPresent
         command:
           - hermes
@@ -183,7 +183,7 @@ spec:
         command:
           - /bin/sh
           - -ec
-        image: ghcr.io/jregeimbal/hermes-agent-jregeimbal-homelab:v2026.6.19-792d286
+        image: ghcr.io/jregeimbal/hermes-agent-jregeimbal-homelab:v2026.6.19-fe64a87
         imagePullPolicy: IfNotPresent
         name: copy-hermes-source
         securityContext:
@@ -220,7 +220,7 @@ spec:
         command:
           - /bin/sh
           - -ec
-        image: ghcr.io/jregeimbal/hermes-agent-jregeimbal-homelab:v2026.6.19-792d286
+        image: ghcr.io/jregeimbal/hermes-agent-jregeimbal-homelab:v2026.6.19-fe64a87
         imagePullPolicy: IfNotPresent
         name: bootstrap-home-config
         securityContext:
@@ -244,7 +244,7 @@ spec:
         command:
           - /bin/sh
           - -ec
-        image: ghcr.io/jregeimbal/hermes-agent-jregeimbal-homelab:v2026.6.19-792d286
+        image: ghcr.io/jregeimbal/hermes-agent-jregeimbal-homelab:v2026.6.19-fe64a87
         imagePullPolicy: IfNotPresent
         name: fix-data-ownership
         securityContext:
@@ -267,7 +267,7 @@ spec:
         name: run-tmp
     image:
       repository: ghcr.io/jregeimbal/hermes-agent-jregeimbal-homelab
-      tag: "v2026.6.19-792d286"
+      tag: "v2026.6.19-fe64a87"
       pullPolicy: IfNotPresent
     podSecurityContext:
       fsGroup: 10000
