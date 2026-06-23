@@ -28,7 +28,9 @@ docker run --rm --entrypoint "" "${IMAGE}" zeroshot --version
 
 echo ""
 echo "=== Verifying zeroshot skill file ==="
-docker run --rm --entrypoint "" "${IMAGE}" test -f /root/.hermes/skills/software-development/zeroshot/SKILL.md && echo "Skill file present at /root/.hermes/skills/software-development/zeroshot/SKILL.md"
+docker run --rm --entrypoint "" "${IMAGE}" test -f /root/.hermes/skills/software-development/zeroshot/SKILL.md \
+  || { echo "ERROR: Skill file missing at /root/.hermes/skills/software-development/zeroshot/SKILL.md"; exit 1; }
+echo "Skill file present at /root/.hermes/skills/software-development/zeroshot/SKILL.md"
 
 echo ""
 echo "=== All checks passed ==="
