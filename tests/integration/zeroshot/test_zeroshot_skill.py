@@ -62,7 +62,14 @@ def test_function_body_stmts_raises_for_unknown_function():
 # --- Integration tests ---
 
 _PROVIDERS = [
-    pytest.param("opencode", id="opencode"),
+    pytest.param(
+        "opencode",
+        id="opencode",
+        marks=pytest.mark.skipif(
+            _conf.IS_CI,
+            reason="opencode requires LM Studio which is not available in CI",
+        ),
+    ),
     pytest.param(
         "claude",
         id="claude",
@@ -87,7 +94,12 @@ def _run_zeroshot(provider: str, tmp_repo, hermes_image, docker_env) -> tuple[st
     if docker_env["base_url"]:
         cmd += ["-e", f"ANTHROPIC_BASE_URL={docker_env['base_url']}"]
     if docker_env["auth_token"]:
-        cmd += ["-e", f"ANTHROPIC_AUTH_TOKEN={docker_env['auth_token']}"]
+        # ANTHROPIC_AUTH_TOKEN: consumed by claude-code sub-agents (zeroshot --provider claude)
+        # ANTHROPIC_API_KEY:    consumed by hermes outer agent when provider: anthropic
+        cmd += [
+            "-e", f"ANTHROPIC_AUTH_TOKEN={docker_env['auth_token']}",
+            "-e", f"ANTHROPIC_API_KEY={docker_env['auth_token']}",
+        ]
     if docker_env["opencode_config_path"]:
         # Override the pre-seeded opencode.json with a custom provider config
         cmd += [

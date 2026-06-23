@@ -15,6 +15,11 @@ DEFAULT_IMAGE = "ghcr.io/jregeimbal/hermes-agent-jregeimbal-homelab:local-dev"
 LMSTUDIO_BASE_URL = os.environ.get("LMSTUDIO_BASE_URL", "http://jonathans-mac-studio:1234/v1")
 LMSTUDIO_MODEL = os.environ.get("LMSTUDIO_MODEL", "qwen/qwen3.6-35b-a3b")
 
+# GitHub Actions (and other standard CI environments) set CI=true.
+# In CI: hermes uses Anthropic API; opencode provider is skipped (no LM Studio).
+IS_CI = os.environ.get("CI") == "true"
+HERMES_CI_MODEL = os.environ.get("HERMES_MODEL", "claude-sonnet-4-6")
+
 
 def _dotenv(key: str) -> str | None:
     """Read a value from the environment, falling back to the repo-root .env file."""
@@ -35,9 +40,19 @@ def _dotenv(key: str) -> str | None:
 ANTHROPIC_AUTH_TOKEN = _dotenv("ANTHROPIC_AUTH_TOKEN")
 ANTHROPIC_BASE_URL = _dotenv("ANTHROPIC_BASE_URL")
 
-# Minimal hermes config.yaml: sets provider to custom so hermes routes to LM Studio
-# instead of trying to auto-detect an OpenRouter/Anthropic key.
-_HERMES_CONFIG = f"""\
+# Hermes config.yaml seeded into tmp_repo so the container doesn't need interactive setup.
+# CI: use Anthropic API (ANTHROPIC_AUTH_TOKEN from env, no ANTHROPIC_BASE_URL redirect).
+# Local dev: use LM Studio via custom OpenAI-compatible endpoint.
+if IS_CI:
+    _HERMES_CONFIG = f"""\
+model:
+  default: {HERMES_CI_MODEL}
+  provider: anthropic
+providers: {{}}
+_config_version: 30
+"""
+else:
+    _HERMES_CONFIG = f"""\
 model:
   default: {LMSTUDIO_MODEL}
   provider: custom
