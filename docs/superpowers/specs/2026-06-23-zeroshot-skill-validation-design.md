@@ -77,22 +77,20 @@ Returns the image tag from the `HERMES_IMAGE` env var, defaulting to `ghcr.io/jr
 
 ### `conftest.py` — provider env passthrough
 
-All provider configuration comes from the caller's environment — nothing is hardcoded in the test. The following env vars are read at test time and forwarded into the container:
+All provider-override configuration is optional. The container's baked-in `opencode.json` (which already points to LM Studio at `jonathans-mac-studio:1234`) is used by default — no env vars are required for local dev. The following env vars are read and forwarded only when set:
 
 | Env var | Required | Description |
 |---|---|---|
-| `ANTHROPIC_BASE_URL` | Yes | Base URL for the inference API (e.g. `http://jonathans-mac-studio:1234` for LM Studio, `https://openrouter.ai/api/v1` for OpenRouter) |
-| `ANTHROPIC_AUTH_TOKEN` | Yes | Auth token for the inference API (`lmstudio` for LM Studio, an API key for cloud providers) |
+| `ANTHROPIC_BASE_URL` | No | Override the inference API base URL (e.g. `https://openrouter.ai/api/v1` for OpenRouter). Omit to use the image's baked-in opencode config. |
+| `ANTHROPIC_AUTH_TOKEN` | No | Override the auth token (e.g. an OpenRouter API key). Omit for LM Studio, which needs no API key. |
 | `OPENCODE_CONFIG_PATH` | No | Local path to a custom `opencode.json` to mount over `/opt/data/home/.config/opencode/opencode.json`. Use this to switch opencode to a different provider (e.g. OpenRouter). If unset, the image's default config is used. |
 
-The test fails with a clear error at collection time if `ANTHROPIC_BASE_URL` or `ANTHROPIC_AUTH_TOKEN` are not set.
+Each var is only added to the `docker run` command if it is set in the caller's environment. If none are set, the container runs with its defaults.
 
 ### Supported provider configurations
 
-**LM Studio (default local dev):**
+**LM Studio (default local dev — no env vars needed):**
 ```bash
-export ANTHROPIC_BASE_URL=http://jonathans-mac-studio:1234
-export ANTHROPIC_AUTH_TOKEN=lmstudio
 pytest scripts/validate-zeroshot/ -v
 ```
 
@@ -112,10 +110,10 @@ A `opencode-openrouter.json` example config is included in the fixture directory
 docker run --rm
   --network host                              # LAN hostnames (e.g. LM Studio) resolve inside container
   -v <tmp_path/data>:/opt/data
-  [-v <OPENCODE_CONFIG_PATH>:/opt/data/home/.config/opencode/opencode.json:ro]  # if set
+  [-v <OPENCODE_CONFIG_PATH>:/opt/data/home/.config/opencode/opencode.json:ro]  # if OPENCODE_CONFIG_PATH is set
   -e HERMES_HOME=/opt/data
-  -e ANTHROPIC_BASE_URL                       # forwarded from caller env
-  -e ANTHROPIC_AUTH_TOKEN                     # forwarded from caller env
+  [-e ANTHROPIC_BASE_URL=...]                 # only if set in caller env
+  [-e ANTHROPIC_AUTH_TOKEN=...]               # only if set in caller env
   -e OPENCODE_TELEMETRY_DISABLED=1
   <image>
   hermes -z "<PROMPT>" --accept-hooks --yolo
@@ -151,7 +149,7 @@ The AST comparison (`ast.parse` + `ast.dump`) compares the compiled function bod
 - `--accept-hooks --yolo` suppress hermes permission prompts so the container runs unattended.
 - The container runs as uid 10000. The `tmp_path` volume is created by the test runner; if permission errors occur, the fixture should `chmod 777` the data dir before mounting.
 - `OPENCODE_TELEMETRY_DISABLED=1` prevents opencode from phoning home during tests.
-- `ANTHROPIC_BASE_URL` and `ANTHROPIC_AUTH_TOKEN` are passed through from the caller's environment without defaults — the test fails fast at collection time if either is missing.
+- `ANTHROPIC_BASE_URL` and `ANTHROPIC_AUTH_TOKEN` are optional. Each is added to the `docker run` command only when present in the caller's environment. For local dev with LM Studio, neither is needed since the image's `opencode.json` already has the endpoint baked in.
 
 ## Timeout and CI Considerations
 

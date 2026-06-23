@@ -159,7 +159,7 @@ git commit -m "test: add zeroshot validation fixture files"
 - Produces:
   - `tmp_repo` fixture → `pathlib.Path` pointing to a writable `/opt/data`-equivalent dir containing a git-initialized `validation-repo/`
   - `hermes_image` fixture → `str` image tag
-  - `docker_env` fixture → `dict` with keys `base_url: str`, `auth_token: str`, `opencode_config_path: str | None`
+  - `docker_env` fixture → `dict` with keys `base_url: str | None`, `auth_token: str | None`, `opencode_config_path: str | None` (all optional — absent keys are not forwarded to docker)
 
 - [ ] **Step 1: Install pytest**
 
@@ -217,20 +217,9 @@ def hermes_image():
 
 @pytest.fixture
 def docker_env():
-    base_url = os.environ.get("ANTHROPIC_BASE_URL")
-    auth_token = os.environ.get("ANTHROPIC_AUTH_TOKEN")
-    missing = [
-        name for name, val in [
-            ("ANTHROPIC_BASE_URL", base_url),
-            ("ANTHROPIC_AUTH_TOKEN", auth_token),
-        ]
-        if not val
-    ]
-    if missing:
-        pytest.fail(f"Required env vars not set: {', '.join(missing)}")
     return {
-        "base_url": base_url,
-        "auth_token": auth_token,
+        "base_url": os.environ.get("ANTHROPIC_BASE_URL"),
+        "auth_token": os.environ.get("ANTHROPIC_AUTH_TOKEN"),
         "opencode_config_path": os.environ.get("OPENCODE_CONFIG_PATH"),
     }
 ```
@@ -261,7 +250,7 @@ git commit -m "test: add conftest fixtures for zeroshot validation"
 - Consumes:
   - `tmp_repo` fixture → `pathlib.Path` (from Task 2 conftest)
   - `hermes_image` fixture → `str` (from Task 2 conftest)
-  - `docker_env` fixture → `dict` with `base_url`, `auth_token`, `opencode_config_path` (from Task 2 conftest)
+  - `docker_env` fixture → `dict` with `base_url: str | None`, `auth_token: str | None`, `opencode_config_path: str | None` (from Task 2 conftest)
   - `FIXTURE_DIR / "expected" / "calculator.py"` — reference solution (from Task 1)
 - Produces: `_function_body_stmts(source: str, name: str) -> list[str]` consumed internally by `test_zeroshot_fixes_calculator`
 
@@ -391,10 +380,12 @@ def test_zeroshot_fixes_calculator(tmp_repo, hermes_image, docker_env):
         "--network", "host",
         "-v", f"{tmp_repo}:/opt/data",
         "-e", "HERMES_HOME=/opt/data",
-        "-e", f"ANTHROPIC_BASE_URL={docker_env['base_url']}",
-        "-e", f"ANTHROPIC_AUTH_TOKEN={docker_env['auth_token']}",
         "-e", "OPENCODE_TELEMETRY_DISABLED=1",
     ]
+    if docker_env["base_url"]:
+        cmd += ["-e", f"ANTHROPIC_BASE_URL={docker_env['base_url']}"]
+    if docker_env["auth_token"]:
+        cmd += ["-e", f"ANTHROPIC_AUTH_TOKEN={docker_env['auth_token']}"]
     if docker_env["opencode_config_path"]:
         cmd += [
             "-v",
@@ -449,15 +440,7 @@ python3 -m pytest scripts/validate-zeroshot/ --collect-only 2>&1
 
 Expected: four tests collected — three unit tests plus `test_zeroshot_fixes_calculator`. No errors.
 
-- [ ] **Step 6: Verify the integration test skips cleanly when env vars are missing**
-
-```bash
-python3 -m pytest scripts/validate-zeroshot/test_zeroshot_skill.py::test_zeroshot_fixes_calculator -v 2>&1
-```
-
-Expected: `FAILED` with message `Required env vars not set: ANTHROPIC_BASE_URL, ANTHROPIC_AUTH_TOKEN` (the `docker_env` fixture calls `pytest.fail`). This confirms the fast-fail guard works.
-
-- [ ] **Step 7: Commit**
+- [ ] **Step 6: Commit**
 
 ```bash
 git add scripts/validate-zeroshot/test_zeroshot_skill.py
@@ -469,8 +452,6 @@ git commit -m "test: add zeroshot skill integration test and helper unit tests"
 ## Running the full integration test
 
 ```bash
-export ANTHROPIC_BASE_URL=http://jonathans-mac-studio:1234
-export ANTHROPIC_AUTH_TOKEN=lmstudio
 # optional: export HERMES_IMAGE=ghcr.io/jregeimbal/hermes-agent-jregeimbal-homelab:local-dev
 # optional: export ZEROSHOT_TIMEOUT=1800
 pytest scripts/validate-zeroshot/ -v
