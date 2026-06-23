@@ -135,8 +135,8 @@ jobs:
         with:
           python-version: "3.12"
 
-      - name: Install pytest
-        run: pip install pytest pytest-rerunfailures
+      - name: Install test dependencies
+        run: pip install -r tests/requirements.txt
 
       - name: Run zeroshot integration tests
         env:
