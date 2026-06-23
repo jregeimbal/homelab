@@ -210,9 +210,9 @@ spec:
               mkdir -p /opt/data/home/.config/opencode
               cp /opt/config-defaults/opencode/opencode.json /opt/data/home/.config/opencode/opencode.json
             fi
-            if [ ! -f /opt/data/home/.hermes/skills/software-development/zeroshot/SKILL.md ]; then
-              mkdir -p /opt/data/home/.hermes/skills/software-development/zeroshot
-              cp /opt/config-defaults/hermes-skills/software-development/zeroshot/SKILL.md /opt/data/home/.hermes/skills/software-development/zeroshot/SKILL.md
+            if [ ! -f /opt/data/home/.hermes/skills/autonomous-ai-agents/zeroshot/SKILL.md ]; then
+              mkdir -p /opt/data/home/.hermes/skills/autonomous-ai-agents/zeroshot
+              cp /opt/config-defaults/hermes-skills/autonomous-ai-agents/zeroshot/SKILL.md /opt/data/home/.hermes/skills/autonomous-ai-agents/zeroshot/SKILL.md
             fi
         command:
           - /bin/sh
