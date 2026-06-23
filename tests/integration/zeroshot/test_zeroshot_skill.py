@@ -94,12 +94,10 @@ def _run_zeroshot(provider: str, tmp_repo, hermes_image, docker_env) -> str:
     if docker_env["base_url"]:
         cmd += ["-e", f"ANTHROPIC_BASE_URL={docker_env['base_url']}"]
     if docker_env["auth_token"]:
-        # ANTHROPIC_AUTH_TOKEN: read by claude-code sub-agents (zeroshot --provider claude)
-        # ANTHROPIC_API_KEY:    read by hermes outer agent when provider: anthropic in config.yaml
-        cmd += [
-            "-e", f"ANTHROPIC_AUTH_TOKEN={docker_env['auth_token']}",
-            "-e", f"ANTHROPIC_API_KEY={docker_env['auth_token']}",
-        ]
+        # ANTHROPIC_API_KEY is the standard env var for the Anthropic SDK.
+        # Do NOT also set ANTHROPIC_AUTH_TOKEN: that is a bearer-token auth path
+        # (Authorization: Bearer ...) which the Anthropic API rejects for API keys.
+        cmd += ["-e", f"ANTHROPIC_API_KEY={docker_env['auth_token']}"]
     if docker_env["opencode_config_path"]:
         # Override the pre-seeded opencode.json with a custom provider config
         cmd += [
