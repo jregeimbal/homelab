@@ -29,6 +29,8 @@ RUN ARCH=$(dpkg --print-architecture) && \
     cp /assets/opencode.json /root/.config/opencode/opencode.json
 
 COPY assets/claude-settings.json /root/.claude/settings.json
-RUN npm install -g @anthropic-ai/claude-code && \
+COPY assets/hermes-skills/zeroshot/SKILL.md /root/.hermes/skills/software-development/zeroshot/SKILL.md
+RUN npm install -g @anthropic-ai/claude-code @the-open-engine/zeroshot && \
     npm cache clean --force && \
-    claude --version
+    claude --version && \
+    zeroshot --version
