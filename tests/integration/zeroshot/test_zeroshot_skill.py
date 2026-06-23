@@ -110,6 +110,16 @@ def _run_zeroshot(provider: str, tmp_repo, hermes_image, docker_env) -> tuple[st
 
     result = subprocess.run(cmd, capture_output=True, text=True, timeout=ZEROSHOT_TIMEOUT)
     output = result.stdout + result.stderr
+
+    # Hermes stage2 init does `chown -R 10000 /opt/data` inside the container.
+    # On Linux with native Docker, that changes host-side ownership too, making all
+    # output files unreadable by the test runner. `sudo -n` is passwordless on GitHub
+    # Actions; it fails immediately (and silently via check=False) on macOS.
+    subprocess.run(
+        ["sudo", "-n", "chmod", "-R", "a+rX", str(tmp_repo)],
+        capture_output=True, check=False,
+    )
+
     changed = tmp_repo / "validation-repo" / "calculator.py"
     return output, changed
 

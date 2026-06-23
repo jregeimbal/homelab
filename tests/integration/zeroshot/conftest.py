@@ -112,11 +112,6 @@ def tmp_repo(tmp_path):
     opencode_dir.mkdir(parents=True)
     (opencode_dir / "opencode.json").write_text(json.dumps(_OPENCODE_CONFIG, indent=2))
 
-    # chmod 777 so hermes uid 10000 can read and write everything
-    data_dir.chmod(0o777)
-    for p in data_dir.rglob("*"):
-        p.chmod(0o777)
-
     subprocess.run(["git", "init"], cwd=repo_dir, check=True, capture_output=True)
     subprocess.run(["git", "add", "."], cwd=repo_dir, check=True, capture_output=True)
     subprocess.run(
@@ -128,6 +123,15 @@ def tmp_repo(tmp_path):
         check=True,
         capture_output=True,
     )
+
+    # chmod 777 AFTER git init so .git/ is also world-writable for hermes (uid 10000).
+    # Hermes's stage2 init does chown -R 10000 /opt/data inside the container; on Linux
+    # with native Docker this changes host-side ownership too, so we need wide-open perms
+    # up front to let hermes write to the repo.
+    data_dir.chmod(0o777)
+    for p in data_dir.rglob("*"):
+        p.chmod(0o777)
+
     return data_dir
 
 
