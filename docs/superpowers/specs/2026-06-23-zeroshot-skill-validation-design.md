@@ -18,15 +18,16 @@ A local validation test that verifies the hermes zeroshot skill works end-to-end
 ## Architecture
 
 ```
-scripts/
-└── validate-zeroshot/
-    ├── conftest.py                  ← pytest fixtures: tmp repo setup, docker runner
-    ├── test_zeroshot_skill.py       ← single test: test_zeroshot_fixes_calculator
-    └── fixture/
-        ├── calculator.py            ← defective file (unimplemented TODO stub)
-        ├── test_calculator.py       ← failing tests (also serve as zeroshot acceptance criteria)
-        └── expected/
-            └── calculator.py        ← reference solution asserted against after the run
+tests/
+└── integration/
+    └── zeroshot/
+        ├── conftest.py                  ← pytest fixtures: tmp repo setup, docker runner
+        ├── test_zeroshot_skill.py       ← single test: test_zeroshot_fixes_calculator
+        └── fixture/
+            ├── calculator.py            ← defective file (unimplemented TODO stub)
+            ├── test_calculator.py       ← failing tests (also serve as zeroshot acceptance criteria)
+            └── expected/
+                └── calculator.py        ← reference solution asserted against after the run
 ```
 
 No new top-level dependencies beyond `pytest` and the standard library (`subprocess`, `shutil`, `ast`, `os`).
@@ -91,18 +92,18 @@ Each var is only added to the `docker run` command if it is set in the caller's 
 
 **LM Studio (default local dev — no env vars needed):**
 ```bash
-pytest scripts/validate-zeroshot/ -v
+pytest tests/integration/zeroshot/ -v
 ```
 
 **OpenRouter (cloud):**
 ```bash
 export ANTHROPIC_BASE_URL=https://openrouter.ai/api/v1
 export ANTHROPIC_AUTH_TOKEN=<openrouter-api-key>
-export OPENCODE_CONFIG_PATH=./scripts/validate-zeroshot/opencode-openrouter.json
-pytest scripts/validate-zeroshot/ -v
+export OPENCODE_CONFIG_PATH=./tests/integration/zeroshot/opencode-openrouter.json
+pytest tests/integration/zeroshot/ -v
 ```
 
-A `opencode-openrouter.json` example config is included in the `scripts/validate-zeroshot/` directory for reference.
+A `opencode-openrouter.json` example config is included in the `tests/integration/zeroshot/` directory for reference.
 
 ### `test_zeroshot_skill.py` — `test_zeroshot_fixes_calculator`
 
@@ -158,8 +159,8 @@ The AST comparison (`ast.parse` + `ast.dump`) compares the compiled function bod
 
 ## File Placement
 
-The test lives under `scripts/validate-zeroshot/` rather than a top-level `tests/` dir to stay consistent with the existing `scripts/validate-image.sh` convention. It is invoked with:
+The test lives under `tests/integration/zeroshot/` alongside the existing `scripts/validate-image.sh` shell-based validation. It is invoked with:
 
 ```bash
-pytest scripts/validate-zeroshot/ -v
+pytest tests/integration/zeroshot/ -v
 ```

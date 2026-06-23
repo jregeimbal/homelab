@@ -12,7 +12,7 @@
 
 - No new Python dependencies beyond `pytest` — everything else is stdlib.
 - All inference provider config comes from caller env vars (`ANTHROPIC_BASE_URL`, `ANTHROPIC_AUTH_TOKEN`) — nothing hardcoded.
-- Test lives under `scripts/validate-zeroshot/` to match the `scripts/validate-image.sh` convention.
+- Test lives under `tests/integration/zeroshot/` alongside `scripts/validate-image.sh`.
 - The integration test (`test_zeroshot_fixes_calculator`) requires Docker and a reachable inference endpoint; the helper unit tests do not.
 - Default timeout: 1800 s, overridable via `ZEROSHOT_TIMEOUT` env var.
 - `--network host` is used so LAN hostnames (e.g. LM Studio) resolve inside the container; harmless for cloud providers.
@@ -23,22 +23,22 @@
 
 | File | Create/Modify | Purpose |
 |---|---|---|
-| `scripts/validate-zeroshot/fixture/calculator.py` | Create | Defective Python file — `add_numbers` is a TODO stub |
-| `scripts/validate-zeroshot/fixture/test_calculator.py` | Create | Failing pytest tests; also serve as zeroshot's acceptance criteria |
-| `scripts/validate-zeroshot/fixture/expected/calculator.py` | Create | Reference solution the test asserts against |
-| `scripts/validate-zeroshot/opencode-openrouter.json` | Create | Example opencode config for the OpenRouter cloud provider |
-| `scripts/validate-zeroshot/conftest.py` | Create | `tmp_repo`, `hermes_image`, `docker_env` pytest fixtures |
-| `scripts/validate-zeroshot/test_zeroshot_skill.py` | Create | Unit tests for `_function_body_stmts` + integration test |
+| `tests/integration/zeroshot/fixture/calculator.py` | Create | Defective Python file — `add_numbers` is a TODO stub |
+| `tests/integration/zeroshot/fixture/test_calculator.py` | Create | Failing pytest tests; also serve as zeroshot's acceptance criteria |
+| `tests/integration/zeroshot/fixture/expected/calculator.py` | Create | Reference solution the test asserts against |
+| `tests/integration/zeroshot/opencode-openrouter.json` | Create | Example opencode config for the OpenRouter cloud provider |
+| `tests/integration/zeroshot/conftest.py` | Create | `tmp_repo`, `hermes_image`, `docker_env` pytest fixtures |
+| `tests/integration/zeroshot/test_zeroshot_skill.py` | Create | Unit tests for `_function_body_stmts` + integration test |
 
 ---
 
 ### Task 1: Synthetic fixture files
 
 **Files:**
-- Create: `scripts/validate-zeroshot/fixture/calculator.py`
-- Create: `scripts/validate-zeroshot/fixture/test_calculator.py`
-- Create: `scripts/validate-zeroshot/fixture/expected/calculator.py`
-- Create: `scripts/validate-zeroshot/opencode-openrouter.json`
+- Create: `tests/integration/zeroshot/fixture/calculator.py`
+- Create: `tests/integration/zeroshot/fixture/test_calculator.py`
+- Create: `tests/integration/zeroshot/fixture/expected/calculator.py`
+- Create: `tests/integration/zeroshot/opencode-openrouter.json`
 
 **Interfaces:**
 - Produces: `fixture/test_calculator.py` imports `add_numbers` from `calculator` — used by zeroshot as acceptance criteria and by Task 3 for verifying the fix
@@ -46,12 +46,12 @@
 - [ ] **Step 1: Create the directory structure**
 
 ```bash
-mkdir -p scripts/validate-zeroshot/fixture/expected
+mkdir -p tests/integration/zeroshot/fixture/expected
 ```
 
 - [ ] **Step 2: Write the defective stub**
 
-Create `scripts/validate-zeroshot/fixture/calculator.py`:
+Create `tests/integration/zeroshot/fixture/calculator.py`:
 
 ```python
 def add_numbers(a, b):
@@ -62,7 +62,7 @@ def add_numbers(a, b):
 
 - [ ] **Step 3: Write the failing tests**
 
-Create `scripts/validate-zeroshot/fixture/test_calculator.py`:
+Create `tests/integration/zeroshot/fixture/test_calculator.py`:
 
 ```python
 from calculator import add_numbers
@@ -78,18 +78,18 @@ def test_add_numbers():
 
 Run:
 ```bash
-python3 -m pytest scripts/validate-zeroshot/fixture/test_calculator.py -v --import-mode=importlib
+python3 -m pytest tests/integration/zeroshot/fixture/test_calculator.py -v --import-mode=importlib
 ```
 
 Expected output:
 ```
-FAILED scripts/validate-zeroshot/fixture/test_calculator.py::test_add_numbers
+FAILED tests/integration/zeroshot/fixture/test_calculator.py::test_add_numbers
 ```
 The test must fail (assertion error or None comparison) — if it passes, the stub is wrong.
 
 - [ ] **Step 5: Write the expected solution**
 
-Create `scripts/validate-zeroshot/fixture/expected/calculator.py`:
+Create `tests/integration/zeroshot/fixture/expected/calculator.py`:
 
 ```python
 def add_numbers(a, b):
@@ -102,7 +102,7 @@ def add_numbers(a, b):
 ```bash
 python3 -c "
 import sys
-sys.path.insert(0, 'scripts/validate-zeroshot/fixture/expected')
+sys.path.insert(0, 'tests/integration/zeroshot/fixture/expected')
 from calculator import add_numbers
 assert add_numbers(2, 3) == 5
 assert add_numbers(-1, 1) == 0
@@ -115,7 +115,7 @@ Expected output: `OK: all assertions pass`
 
 - [ ] **Step 7: Write the OpenRouter example config**
 
-Create `scripts/validate-zeroshot/opencode-openrouter.json`:
+Create `tests/integration/zeroshot/opencode-openrouter.json`:
 
 ```json
 {
@@ -143,7 +143,7 @@ Create `scripts/validate-zeroshot/opencode-openrouter.json`:
 - [ ] **Step 8: Commit**
 
 ```bash
-git add scripts/validate-zeroshot/
+git add tests/integration/zeroshot/
 git commit -m "test: add zeroshot validation fixture files"
 ```
 
@@ -152,10 +152,10 @@ git commit -m "test: add zeroshot validation fixture files"
 ### Task 2: `conftest.py` — pytest fixtures
 
 **Files:**
-- Create: `scripts/validate-zeroshot/conftest.py`
+- Create: `tests/integration/zeroshot/conftest.py`
 
 **Interfaces:**
-- Consumes: `scripts/validate-zeroshot/fixture/` directory (from Task 1)
+- Consumes: `tests/integration/zeroshot/fixture/` directory (from Task 1)
 - Produces:
   - `tmp_repo` fixture → `pathlib.Path` pointing to a writable `/opt/data`-equivalent dir containing a git-initialized `validation-repo/`
   - `hermes_image` fixture → `str` image tag
@@ -175,7 +175,7 @@ Expected: `pytest 8.x.x`
 
 - [ ] **Step 2: Write conftest.py**
 
-Create `scripts/validate-zeroshot/conftest.py`:
+Create `tests/integration/zeroshot/conftest.py`:
 
 ```python
 import os
@@ -227,7 +227,7 @@ def docker_env():
 - [ ] **Step 3: Verify pytest collection finds the fixtures**
 
 ```bash
-python3 -m pytest scripts/validate-zeroshot/ --collect-only 2>&1 | head -20
+python3 -m pytest tests/integration/zeroshot/ --collect-only 2>&1 | head -20
 ```
 
 Expected: no errors; fixtures listed as available (collection may show 0 tests since no test file exists yet — that's fine).
@@ -235,7 +235,7 @@ Expected: no errors; fixtures listed as available (collection may show 0 tests s
 - [ ] **Step 4: Commit**
 
 ```bash
-git add scripts/validate-zeroshot/conftest.py
+git add tests/integration/zeroshot/conftest.py
 git commit -m "test: add conftest fixtures for zeroshot validation"
 ```
 
@@ -244,7 +244,7 @@ git commit -m "test: add conftest fixtures for zeroshot validation"
 ### Task 3: Integration test and helper unit tests
 
 **Files:**
-- Create: `scripts/validate-zeroshot/test_zeroshot_skill.py`
+- Create: `tests/integration/zeroshot/test_zeroshot_skill.py`
 
 **Interfaces:**
 - Consumes:
@@ -256,7 +256,7 @@ git commit -m "test: add conftest fixtures for zeroshot validation"
 
 - [ ] **Step 1: Write the failing unit tests first**
 
-Create `scripts/validate-zeroshot/test_zeroshot_skill.py` with just the unit tests (no implementation yet):
+Create `tests/integration/zeroshot/test_zeroshot_skill.py` with just the unit tests (no implementation yet):
 
 ```python
 import ast
@@ -306,14 +306,14 @@ def test_function_body_stmts_raises_for_unknown_function():
 - [ ] **Step 2: Run the unit tests — expect NameError (function not defined yet)**
 
 ```bash
-python3 -m pytest scripts/validate-zeroshot/test_zeroshot_skill.py -k "not zeroshot_fixes" -v
+python3 -m pytest tests/integration/zeroshot/test_zeroshot_skill.py -k "not zeroshot_fixes" -v
 ```
 
 Expected: `ERROR` — `NameError: name '_function_body_stmts' is not defined`. This confirms the tests are wired up and failing for the right reason.
 
 - [ ] **Step 3: Implement `_function_body_stmts` and add the integration test**
 
-Replace the contents of `scripts/validate-zeroshot/test_zeroshot_skill.py` with:
+Replace the contents of `tests/integration/zeroshot/test_zeroshot_skill.py` with:
 
 ```python
 import ast
@@ -421,7 +421,7 @@ def test_zeroshot_fixes_calculator(tmp_repo, hermes_image, docker_env):
 - [ ] **Step 4: Run the unit tests — expect PASS**
 
 ```bash
-python3 -m pytest scripts/validate-zeroshot/test_zeroshot_skill.py -k "not zeroshot_fixes" -v
+python3 -m pytest tests/integration/zeroshot/test_zeroshot_skill.py -k "not zeroshot_fixes" -v
 ```
 
 Expected output:
@@ -435,7 +435,7 @@ PASSED test_zeroshot_skill.py::test_function_body_stmts_raises_for_unknown_funct
 - [ ] **Step 5: Verify pytest collection includes the integration test**
 
 ```bash
-python3 -m pytest scripts/validate-zeroshot/ --collect-only 2>&1
+python3 -m pytest tests/integration/zeroshot/ --collect-only 2>&1
 ```
 
 Expected: four tests collected — three unit tests plus `test_zeroshot_fixes_calculator`. No errors.
@@ -443,7 +443,7 @@ Expected: four tests collected — three unit tests plus `test_zeroshot_fixes_ca
 - [ ] **Step 6: Commit**
 
 ```bash
-git add scripts/validate-zeroshot/test_zeroshot_skill.py
+git add tests/integration/zeroshot/test_zeroshot_skill.py
 git commit -m "test: add zeroshot skill integration test and helper unit tests"
 ```
 
@@ -454,18 +454,18 @@ git commit -m "test: add zeroshot skill integration test and helper unit tests"
 ```bash
 # optional: export HERMES_IMAGE=ghcr.io/jregeimbal/hermes-agent-jregeimbal-homelab:local-dev
 # optional: export ZEROSHOT_TIMEOUT=1800
-pytest scripts/validate-zeroshot/ -v
+pytest tests/integration/zeroshot/ -v
 ```
 
 For OpenRouter:
 ```bash
 export ANTHROPIC_BASE_URL=https://openrouter.ai/api/v1
 export ANTHROPIC_AUTH_TOKEN=<your-openrouter-key>
-export OPENCODE_CONFIG_PATH=scripts/validate-zeroshot/opencode-openrouter.json
-pytest scripts/validate-zeroshot/ -v
+export OPENCODE_CONFIG_PATH=tests/integration/zeroshot/opencode-openrouter.json
+pytest tests/integration/zeroshot/ -v
 ```
 
 Unit tests only (no Docker, no env vars required):
 ```bash
-pytest scripts/validate-zeroshot/ -k "not zeroshot_fixes" -v
+pytest tests/integration/zeroshot/ -k "not zeroshot_fixes" -v
 ```
