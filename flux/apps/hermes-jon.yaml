@@ -202,6 +202,40 @@ spec:
       - args:
           - |
             set -eu
+            if [ ! -f /opt/data/home/.claude/settings.json ]; then
+              mkdir -p /opt/data/home/.claude
+              cp /opt/config-defaults/claude/settings.json /opt/data/home/.claude/settings.json
+            fi
+            if [ ! -f /opt/data/home/.config/opencode/opencode.json ]; then
+              mkdir -p /opt/data/home/.config/opencode
+              cp /opt/config-defaults/opencode/opencode.json /opt/data/home/.config/opencode/opencode.json
+            fi
+            if [ ! -f /opt/data/home/.hermes/skills/software-development/zeroshot/SKILL.md ]; then
+              mkdir -p /opt/data/home/.hermes/skills/software-development/zeroshot
+              cp /opt/config-defaults/hermes-skills/software-development/zeroshot/SKILL.md /opt/data/home/.hermes/skills/software-development/zeroshot/SKILL.md
+            fi
+        command:
+          - /bin/sh
+          - -ec
+        image: ghcr.io/jregeimbal/hermes-agent-jregeimbal-homelab:v2026.6.19-14b5699
+        imagePullPolicy: IfNotPresent
+        name: bootstrap-home-config
+        securityContext:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
+          runAsNonRoot: false
+          runAsUser: 0
+          runAsGroup: 0
+          seccompProfile:
+            type: RuntimeDefault
+        volumeMounts:
+          - mountPath: /opt/data
+            name: data
+          - mountPath: /tmp
+            name: tmp
+      - args:
+          - |
+            set -eu
             chown -R 10000:10000 /opt/data
             chown 10000:10000 /mnt/run
         command:
