@@ -206,5 +206,5 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add flux/apps/hermes-jon.yaml flux/apps/hermes-ana.yaml
-          git commit -m "chore: bump hermes image to ${VERSION}-${SHA}" || echo "No changes to commit"
+          git commit -m "chore: bump hermes image to ${VERSION}-${{ steps.git_sha.outputs.sha }}" || echo "No changes to commit"
           git push --force-with-lease 2>&1 || { echo "Git push failed - check for conflicts"; exit 1; }

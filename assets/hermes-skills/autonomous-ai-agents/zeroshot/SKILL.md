@@ -1,7 +1,7 @@
 ---
 name: zeroshot
 description: Use when the user asks to implement a GitHub issue using zeroshot, run a multi-agent coding workflow, or autonomously implement and verify a code change with a resulting PR. Supports opencode (LM Studio, local) and claude (Anthropic API) providers. Launches zeroshot in daemon mode (--pr --provider <provider> -d), monitors progress via logs, and reports the final outcome.
-version: 1.2.0
+version: 1.3.0
 author: Jon Regeimbal
 license: MIT
 platforms: [linux, macos]
@@ -53,7 +53,15 @@ Don't use for:
    ```
    Use `git pull --rebase` without explicit remote or branch — it uses the tracking-branch configuration set by `git clone` and works regardless of the default branch name.
 
-3. **Launch zeroshot in daemon mode** from the repo root:
+   Run `git pull --rebase` **exactly once**. Whether it prints "Already up to date." or pulls new commits, that is a success — proceed immediately to step 3. Do not run it again.
+
+3. **Check for an existing cluster**, then launch once if none exists:
+   ```bash
+   zeroshot list
+   ```
+   If a cluster for this repo is already `running` or in `setup`, record its ID and skip to step 4. Do not launch another cluster.
+
+   If no relevant cluster exists, launch zeroshot **exactly once** from the repo root:
    ```bash
    zeroshot run <issue_number> --pr --provider opencode -d   # local dev (LM Studio)
    zeroshot run <issue_number> --pr --provider claude -d     # Anthropic API
@@ -66,7 +74,7 @@ Don't use for:
    ```bash
    zeroshot run "description of task" --pr --provider opencode -d
    ```
-   Zeroshot prints a cluster ID (e.g., `cluster-abc123`) and returns immediately. Record it.
+   If the command exits 0 and prints a cluster ID (e.g., `Started cobalt-lion-31`), record the ID and proceed. Do not run `zeroshot run` again regardless of what happens next.
 
 4. **Confirm it's running**, then report the cluster ID to the user:
    ```bash
@@ -74,11 +82,17 @@ Don't use for:
    ```
    Do NOT use `zeroshot logs -f` or `-w` — those stream indefinitely and block the agent. Use status-based polling instead.
 
-   To poll until done (runs for ~3 minutes then returns control):
+   Poll with a mandatory sleep between each check — rapid-fire status calls do not speed anything up:
    ```bash
    for i in 1 2 3; do zeroshot status <cluster-id>; sleep 60; done
    ```
    Re-run as needed. Exit early if the status shows `VERIFIED` or `REJECTED`.
+
+   **If status stays in `setup` for more than 2 minutes**, stop polling status and check the setup log instead:
+   ```bash
+   tail -50 /opt/data/home/.zeroshot/<cluster-id>-daemon.log
+   ```
+   Common causes: LM Studio unreachable (for `opencode`), Anthropic API key not injected (for `claude`). Report what the log shows to the user rather than continuing to poll.
 
 5. **Report the outcome** once the cluster finishes:
    - `VERIFIED` — PR was opened. Report the PR URL to the user.
@@ -110,6 +124,9 @@ zeroshot resume <cluster-id>     # resume from last persisted checkpoint
 2. **GitHub auth missing.** Run `gh auth status` first. The container has `gh` configured via `GH_CONFIG_DIR`; if it fails, report to the user rather than proceeding.
 3. **Missing remote.** Zeroshot resolves issue numbers from the repo's `origin` remote. Ensure the cloned repo has a GitHub `origin`.
 4. **Streaming logs.** Never use `zeroshot logs -f` or `-w` — they stream indefinitely and stall the agent. Use `zeroshot status <id>` in a short polling loop instead.
+5. **Launching multiple clusters.** Run `zeroshot run` exactly once per session. Check `zeroshot list` first — if a cluster already exists for this repo, use it. Launching extras wastes resources and creates confusion about which cluster to track.
+6. **Tight status polling.** Do not call `zeroshot status` repeatedly without sleeping. The `for i in 1 2 3` loop in step 4 includes `sleep 60` — that sleep is mandatory, not optional. Rapid-fire calls do not help and fill context with duplicate output.
+7. **Cluster stuck in setup.** If `State: setup` persists for more than 2 minutes, stop polling status and read the setup log (`tail -50 /opt/data/home/.zeroshot/<cluster-id>-daemon.log`). The log will reveal the actual error. Do not keep polling status — the state will not change until the underlying problem is fixed.
 
 ## Verification Checklist
 
