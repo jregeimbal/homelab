@@ -1,7 +1,7 @@
 ---
 name: zeroshot
 description: Use when the user asks to implement a GitHub issue using zeroshot, run a multi-agent coding workflow, or autonomously implement and verify a code change with a resulting PR. Supports opencode (LM Studio, local) and claude (Anthropic API) providers. Launches zeroshot in daemon mode (--pr --provider <provider> -d), monitors progress via logs, and reports the final outcome.
-version: 1.4.0
+version: 1.5.0
 author: Jon Regeimbal
 license: MIT
 platforms: [linux, macos]
@@ -127,7 +127,6 @@ zeroshot resume <cluster-id>     # resume from last persisted checkpoint
 5. **Launching multiple clusters.** Run `zeroshot run` exactly once per session. Check `zeroshot list` first — if a cluster already exists for this repo, use it. Launching extras wastes resources and creates confusion about which cluster to track.
 6. **Tight status polling.** Do not call `zeroshot status` repeatedly without sleeping. The `for i in 1 2 3` loop in step 4 includes `sleep 60` — that sleep is mandatory, not optional. Rapid-fire calls do not help and fill context with duplicate output.
 7. **Cluster stuck in setup.** If `State: setup` persists for more than 2 minutes, stop polling status and read the setup log (`tail -50 /opt/data/home/.zeroshot/<cluster-id>-daemon.log`). The log will reveal the actual error. Do not keep polling status — the state will not change until the underlying problem is fixed.
-8. **Work pushed directly to main instead of a PR.** The cluster will fail with `git-pusher completed without creating a PR/MR`. Zeroshot's `onComplete` hook correctly rejects this outcome (no `pr_number` in output), but the commit may already be on main. To recover: find the merge commit SHA in the logs (`"merge_commit_sha": "…"`), revert it (`git revert <sha> && git push`), then resume zeroshot or create the PR manually from the reverted branch. **Prevention:** add branch-protection rules to the target repo so direct pushes to the default branch are blocked — this forces the git-pusher to go through a PR even if it tries to skip the step.
 
 ## Verification Checklist
 
