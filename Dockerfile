@@ -29,7 +29,11 @@ RUN ARCH=$(dpkg --print-architecture) && \
 COPY assets/claude-settings.json /opt/config-defaults/claude/settings.json
 COPY assets/gitconfig /opt/config-defaults/git/gitconfig
 COPY assets/hermes-skills/autonomous-ai-agents/zeroshot/SKILL.md /opt/config-defaults/hermes-skills/autonomous-ai-agents/zeroshot/SKILL.md
-RUN npm install -g @anthropic-ai/claude-code github:jregeimbal/zeroshot#fix/git-pusher-default-branch-guard && \
+RUN npm install -g @anthropic-ai/claude-code @the-open-engine/zeroshot && \
     npm cache clean --force && \
     claude --version && \
     zeroshot --version
+
+# Patch git-pusher-template.js with branch guard fix pending upstream merge:
+# https://github.com/jregeimbal/zeroshot/tree/fix/git-pusher-default-branch-guard
+COPY assets/zeroshot-patches/git-pusher-template.js /usr/local/lib/node_modules/@the-open-engine/zeroshot/src/agents/git-pusher-template.js
