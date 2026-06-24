@@ -91,6 +91,47 @@ def _resolve_add_host(base_url: str) -> str | None:
         return None
 
 
+_GIT_ID = ["-c", "user.email=test@example.com", "-c", "user.name=Test"]
+
+
+def _seed_hermes_data_dir(data_dir: Path) -> None:
+    """Write hermes config files into data_dir (mounted as /opt/data in container).
+
+    Mirrors what the k8s init containers copy from /opt/config-defaults/ — needed
+    because plain `docker run` skips the init-container setup phase.
+    """
+    (data_dir / "config.yaml").write_text(_HERMES_CONFIG)
+
+    # opencode config for zeroshot --provider opencode
+    opencode_dir = data_dir / "home" / ".config" / "opencode"
+    opencode_dir.mkdir(parents=True)
+    (opencode_dir / "opencode.json").write_text(json.dumps(_OPENCODE_CONFIG, indent=2))
+
+    # ~/.claude/settings.json so claude-code sub-agents can authenticate.
+    # Hermes sets HOME=$HERMES_HOME/home for terminal subprocesses, so ~/.claude/
+    # resolves to data_dir/home/.claude/.
+    # Hermes's env passthrough blocklist strips ANTHROPIC_API_KEY from subprocess
+    # envs (security feature). The settings.json "env" key bypasses this — file-based.
+    if ANTHROPIC_API_KEY:
+        claude_dir = data_dir / "home" / ".claude"
+        claude_dir.mkdir(parents=True)
+        (claude_dir / "settings.json").write_text(
+            json.dumps({"env": {"ANTHROPIC_API_KEY": ANTHROPIC_API_KEY}})
+        )
+
+
+def _chmod_for_hermes(data_dir: Path) -> None:
+    """Make data_dir world-writable so hermes (uid 10000) can write inside it.
+
+    Hermes stage2 init does `chown -R 10000 /opt/data` inside the container; on
+    Linux with native Docker that changes host-side ownership too, so we need
+    wide-open permissions up front.
+    """
+    data_dir.chmod(0o777)
+    for p in data_dir.rglob("*"):
+        p.chmod(0o777)
+
+
 @pytest.fixture
 def tmp_repo(tmp_path):
     data_dir = tmp_path / "data"
@@ -101,51 +142,77 @@ def tmp_repo(tmp_path):
         ignore=shutil.ignore_patterns("expected", "__pycache__", ".pytest_cache", "*.pyc"),
     )
 
-    # Seed hermes model config so it reaches LM Studio without interactive setup.
-    # The k8s init containers normally do this from /opt/config-defaults/; plain
-    # docker run skips them, so we do it here.
-    (data_dir / "config.yaml").write_text(_HERMES_CONFIG)
-
-    # Seed opencode config for zeroshot --provider opencode.
-    # Mirrors what the k8s init container copies from /opt/config-defaults/opencode/.
-    opencode_dir = data_dir / "home" / ".config" / "opencode"
-    opencode_dir.mkdir(parents=True)
-    (opencode_dir / "opencode.json").write_text(json.dumps(_OPENCODE_CONFIG, indent=2))
-
-    # Seed ~/.claude/settings.json so claude-code sub-agents can authenticate.
-    # Hermes sets HOME=$HERMES_HOME/home for its subprocess environment (confirmed by
-    # checking $HOME inside a hermes terminal: /opt/data/home). So ~/.claude/ resolves
-    # to data_dir/home/.claude/, which is where the opencode config lives too.
-    # Hermes's env passthrough blocklist blocks ANTHROPIC_API_KEY from reaching terminal
-    # subprocesses (security feature to prevent credential leakage to agent-run code).
-    # The claude-code settings.json "env" override bypasses this — file-based, not env.
-    if ANTHROPIC_API_KEY:
-        claude_dir = data_dir / "home" / ".claude"
-        claude_dir.mkdir(parents=True)
-        (claude_dir / "settings.json").write_text(
-            json.dumps({"env": {"ANTHROPIC_API_KEY": ANTHROPIC_API_KEY}})
-        )
+    _seed_hermes_data_dir(data_dir)
 
     subprocess.run(["git", "init"], cwd=repo_dir, check=True, capture_output=True)
     subprocess.run(["git", "add", "."], cwd=repo_dir, check=True, capture_output=True)
     subprocess.run(
-        [
-            "git", "-c", "user.email=test@example.com", "-c", "user.name=Test",
-            "commit", "-m", "initial",
-        ],
+        ["git"] + _GIT_ID + ["commit", "-m", "initial"],
         cwd=repo_dir,
         check=True,
         capture_output=True,
     )
 
-    # chmod 777 AFTER git init so .git/ is also world-writable for hermes (uid 10000).
-    # Hermes's stage2 init does chown -R 10000 /opt/data inside the container; on Linux
-    # with native Docker this changes host-side ownership too, so we need wide-open perms
-    # up front to let hermes write to the repo.
-    data_dir.chmod(0o777)
-    for p in data_dir.rglob("*"):
-        p.chmod(0o777)
+    _chmod_for_hermes(data_dir)
+    return data_dir
 
+
+@pytest.fixture
+def tmp_tracking_repo(tmp_path):
+    """Data dir pre-loaded with a bare remote.git and a local target-repo clone.
+
+    Layout inside the container (/opt/data → data_dir):
+      /opt/data/remote.git   — bare remote, default branch 'develop'
+      /opt/data/target-repo  — clone of remote, tracking origin/develop,
+                               one commit BEHIND (update.txt not yet pulled)
+
+    The remote has no 'main' branch, so:
+      git pull --rebase origin main  → fails ("couldn't find remote ref main")
+      git pull --rebase              → succeeds (uses tracking-branch config)
+
+    Verifying that update.txt appears in target-repo after hermes runs step 2
+    proves the correct command was used.
+    """
+    data_dir = tmp_path / "data"
+    data_dir.mkdir()
+    _seed_hermes_data_dir(data_dir)
+
+    # Bare remote (container path: /opt/data/remote.git)
+    remote = data_dir / "remote.git"
+    subprocess.run(["git", "init", "--bare", str(remote)], check=True, capture_output=True)
+
+    # Populate remote with an initial commit on 'develop'
+    work = tmp_path / "work"
+    subprocess.run(["git", "clone", str(remote), str(work)], check=True, capture_output=True)
+    subprocess.run(["git"] + _GIT_ID + ["checkout", "-b", "develop"],
+                   cwd=work, check=True, capture_output=True)
+    (work / "README.md").write_text("initial")
+    subprocess.run(["git", "add", "."], cwd=work, check=True, capture_output=True)
+    subprocess.run(["git"] + _GIT_ID + ["commit", "-m", "initial"],
+                   cwd=work, check=True, capture_output=True)
+    subprocess.run(["git", "push", "-u", "origin", "develop"],
+                   cwd=work, check=True, capture_output=True)
+
+    # Clone into target-repo from the host path, then repoint origin to the
+    # container path so git pull --rebase inside the container resolves correctly.
+    target = data_dir / "target-repo"
+    subprocess.run(
+        ["git", "clone", "--branch", "develop", str(remote), str(target)],
+        check=True, capture_output=True,
+    )
+    subprocess.run(
+        ["git", "remote", "set-url", "origin", "file:///opt/data/remote.git"],
+        cwd=target, check=True, capture_output=True,
+    )
+
+    # Push a new commit to remote that target-repo hasn't fetched yet
+    (work / "update.txt").write_text("added by remote after initial clone")
+    subprocess.run(["git", "add", "."], cwd=work, check=True, capture_output=True)
+    subprocess.run(["git"] + _GIT_ID + ["commit", "-m", "add update.txt"],
+                   cwd=work, check=True, capture_output=True)
+    subprocess.run(["git", "push"], cwd=work, check=True, capture_output=True)
+
+    _chmod_for_hermes(data_dir)
     return data_dir
 
 

@@ -44,14 +44,14 @@ Don't use for:
 
 1. **Confirm the target repo.** If the user has not specified `owner/repo`, ask for it before proceeding.
 
-2. **Navigate to the repo.** If already cloned under `/opt/data/<repo>`, enter it and update the default branch:
+2. **Navigate to the repo.** Check whether the directory already exists before deciding what to do — never run `gh repo clone` when the directory is already present, as it will always fail:
    ```bash
-   cd /opt/data/<repo> && git pull --rebase origin $(git symbolic-ref --short HEAD)
-   ```
-   If not present, clone it first:
-   ```bash
+   # If already cloned ([ -d /opt/data/<repo> ] is true):
+   cd /opt/data/<repo> && git pull --rebase
+   # If not yet cloned:
    cd /opt/data && gh repo clone <owner>/<repo> && cd <repo>
    ```
+   Use `git pull --rebase` without explicit remote or branch — it uses the tracking-branch configuration set by `git clone` and works regardless of the default branch name.
 
 3. **Launch zeroshot in daemon mode** from the repo root:
    ```bash
