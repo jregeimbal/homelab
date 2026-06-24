@@ -8,12 +8,14 @@ on:
       - Dockerfile
       - requirements.txt
       - assets/**
+      - .github/workflows/docker-build.yml
   pull_request:
     branches: [main]
     paths:
       - Dockerfile
       - requirements.txt
       - assets/**
+      - .github/workflows/docker-build.yml
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
