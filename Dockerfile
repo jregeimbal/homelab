@@ -33,3 +33,7 @@ RUN npm install -g @anthropic-ai/claude-code @the-open-engine/zeroshot && \
     npm cache clean --force && \
     claude --version && \
     zeroshot --version
+
+# Patch git-pusher-template.js with branch guard fix pending upstream merge:
+# https://github.com/jregeimbal/zeroshot/tree/fix/git-pusher-default-branch-guard
+COPY assets/zeroshot-patches/git-pusher-template.js /usr/local/lib/node_modules/@the-open-engine/zeroshot/src/agents/git-pusher-template.js
