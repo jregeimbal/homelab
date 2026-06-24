@@ -42,6 +42,7 @@ spec:
           default: qwen/qwen3.6-35b-a3b
           provider: custom
         security:
+          approval_mode: "smart"
           redact_secrets: true
           tirith_enabled: true
           tirith_fail_open: true
