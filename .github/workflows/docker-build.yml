@@ -26,9 +26,66 @@ env:
 
 jobs:
   build-push:
-    name: Build and Push
+    name: Build (${{ matrix.arch }})
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    permissions:
+      contents: read
+      packages: write
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: linux/amd64
+            arch: amd64
+          - platform: linux/arm64
+            arch: arm64
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push by digest
+        id: build
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          platforms: ${{ matrix.platform }}
+          outputs: type=image,name=${{ env.REGISTRY }}/${{ env.OWNER }}/${{ env.IMAGE_NAME }},push-by-digest=true,name-canonical=true,push=${{ github.event_name == 'push' }}
+          cache-from: type=registry,ref=${{ env.REGISTRY }}/${{ env.OWNER }}/${{ env.IMAGE_NAME }}:buildcache-${{ matrix.arch }}
+          cache-to: type=registry,ref=${{ env.REGISTRY }}/${{ env.OWNER }}/${{ env.IMAGE_NAME }}:buildcache-${{ matrix.arch }},mode=max
+
+      - name: Export digest
+        if: github.event_name == 'push'
+        run: |
+          mkdir -p /tmp/digests
+          digest="${{ steps.build.outputs.digest }}"
+          touch "/tmp/digests/${digest#sha256:}"
+
+      - name: Upload digest
+        if: github.event_name == 'push'
+        uses: actions/upload-artifact@v4
+        with:
+          name: digests-${{ matrix.arch }}
+          path: /tmp/digests/*
+          if-no-files-found: error
+          retention-days: 1
+
+  merge:
+    name: Merge and push manifest
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    needs: [build-push]
+    if: github.event_name == 'push' && success()
     permissions:
       contents: read
       packages: write
@@ -39,6 +96,13 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
+      - name: Download digests
+        uses: actions/download-artifact@v4
+        with:
+          path: /tmp/digests
+          pattern: digests-*
+          merge-multiple: true
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -67,26 +131,21 @@ jobs:
           images: ${{ env.REGISTRY }}/${{ env.OWNER }}/${{ env.IMAGE_NAME }}
           tags: |
             type=sha,format=short
-            type=raw,value=${{ steps.base_version.outputs.version }}-${{ steps.git_sha.outputs.sha }},enable=${{ github.event_name == 'push' }}
-            type=raw,value={{date 'YYYY-MM-DD'}},enable=${{ github.event_name == 'push' }}
-            type=raw,value=latest,enable=${{ github.event_name == 'push' }}
+            type=raw,value=${{ steps.base_version.outputs.version }}-${{ steps.git_sha.outputs.sha }}
+            type=raw,value={{date 'YYYY-MM-DD'}}
+            type=raw,value=latest
 
-      - name: Build and push
-        uses: docker/build-push-action@v6
-        with:
-          context: .
-          platforms: linux/amd64,linux/arm64
-          push: ${{ github.event_name == 'push' }}
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+      - name: Create manifest and push
+        working-directory: /tmp/digests
+        run: |
+          docker buildx imagetools create $(jq -cr '.tags | map("-t " + .) | join(" ")' <<< "$DOCKER_METADATA_OUTPUT_JSON") \
+            $(printf '${{ env.REGISTRY }}/${{ env.OWNER }}/${{ env.IMAGE_NAME }}@sha256:%s ' *)
 
   validate-manifests:
     name: Validate K8s Manifests
     runs-on: ubuntu-latest
     timeout-minutes: 2
-    needs: [build-push]
+    needs: [merge]
     if: github.event_name == 'push' && success()
     steps:
       - name: Checkout
@@ -115,7 +174,7 @@ jobs:
     name: Validate Docker Image
     runs-on: ubuntu-latest
     timeout-minutes: 5
-    needs: [build-push]
+    needs: [merge]
     if: github.event_name == 'push' && success()
     steps:
       - name: Log in to GHCR
@@ -128,33 +187,33 @@ jobs:
       - name: Verify claude CLI
         run: |
           docker run --rm \
-            ${{ env.REGISTRY }}/${{ env.OWNER }}/${{ env.IMAGE_NAME }}:${{ needs.build-push.outputs.version }}-${{ needs.build-push.outputs.sha }} \
+            ${{ env.REGISTRY }}/${{ env.OWNER }}/${{ env.IMAGE_NAME }}:${{ needs.merge.outputs.version }}-${{ needs.merge.outputs.sha }} \
             claude --version
 
       - name: Verify discord package
         run: |
           docker run --rm \
             -e PYTHONPATH=/opt/data/py-global \
-            ${{ env.REGISTRY }}/${{ env.OWNER }}/${{ env.IMAGE_NAME }}:${{ needs.build-push.outputs.version }}-${{ needs.build-push.outputs.sha }} \
+            ${{ env.REGISTRY }}/${{ env.OWNER }}/${{ env.IMAGE_NAME }}:${{ needs.merge.outputs.version }}-${{ needs.merge.outputs.sha }} \
             python3 -c "import discord; print(discord.__version__)"
 
       - name: Verify gh CLI
         run: |
           docker run --rm \
-            ${{ env.REGISTRY }}/${{ env.OWNER }}/${{ env.IMAGE_NAME }}:${{ needs.build-push.outputs.version }}-${{ needs.build-push.outputs.sha }} \
+            ${{ env.REGISTRY }}/${{ env.OWNER }}/${{ env.IMAGE_NAME }}:${{ needs.merge.outputs.version }}-${{ needs.merge.outputs.sha }} \
             gh --version
 
       - name: Verify opencode
         run: |
           docker run --rm \
-            ${{ env.REGISTRY }}/${{ env.OWNER }}/${{ env.IMAGE_NAME }}:${{ needs.build-push.outputs.version }}-${{ needs.build-push.outputs.sha }} \
+            ${{ env.REGISTRY }}/${{ env.OWNER }}/${{ env.IMAGE_NAME }}:${{ needs.merge.outputs.version }}-${{ needs.merge.outputs.sha }} \
             opencode --help 2>&1 | head -5
 
   bump-version:
     name: Bump Image Version
     runs-on: ubuntu-latest
     timeout-minutes: 5
-    needs: [build-push, validate-manifests, validate-image]
+    needs: [merge, validate-manifests, validate-image]
     if: github.event_name == 'push' && success() && github.actor != 'github-actions[bot]'
     env:
       GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
