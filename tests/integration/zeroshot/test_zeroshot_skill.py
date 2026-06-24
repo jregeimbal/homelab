@@ -101,13 +101,15 @@ def _dir_tree(root: Path, max_depth: int = 4) -> str:
     return "\n".join(lines) if lines else "(empty)"
 
 
-def _run_zeroshot(provider: str, tmp_repo, hermes_image, docker_env) -> tuple[str, int]:
-    """Build and run the docker command. Returns (combined stdout+stderr, exit_code)."""
+def _docker_run_hermes(
+    prompt: str, data_dir: Path, hermes_image: str, docker_env: dict
+) -> tuple[str, int]:
+    """Run hermes in docker with the given prompt. Returns (combined stdout+stderr, exit_code)."""
     cmd = ["docker", "run", "--rm", "--network", "host"]
     if docker_env["lmstudio_add_host"]:
         cmd += ["--add-host", docker_env["lmstudio_add_host"]]
     cmd += [
-        "-v", f"{tmp_repo}:/opt/data",
+        "-v", f"{data_dir}:/opt/data",
         "-e", "HERMES_HOME=/opt/data",
         "-e", "OPENCODE_TELEMETRY_DISABLED=1",
     ]
@@ -124,7 +126,7 @@ def _run_zeroshot(provider: str, tmp_repo, hermes_image, docker_env) -> tuple[st
             "-v",
             f"{docker_env['opencode_config_path']}:/opt/data/home/.config/opencode/opencode.json:ro",
         ]
-    cmd += [hermes_image, "hermes", "-z", _make_prompt(provider), "--accept-hooks", "--yolo"]
+    cmd += [hermes_image, "hermes", "-z", prompt, "--accept-hooks", "--yolo"]
 
     result = subprocess.run(cmd, capture_output=True, text=True, timeout=ZEROSHOT_TIMEOUT)
     output = result.stdout + result.stderr
@@ -134,11 +136,15 @@ def _run_zeroshot(provider: str, tmp_repo, hermes_image, docker_env) -> tuple[st
     # output files unreadable by the test runner. `sudo -n` is passwordless on GitHub
     # Actions; it fails immediately (and silently via check=False) on macOS.
     subprocess.run(
-        ["sudo", "-n", "chmod", "-R", "a+rX", str(tmp_repo)],
+        ["sudo", "-n", "chmod", "-R", "a+rX", str(data_dir)],
         capture_output=True, check=False,
     )
 
     return output, result.returncode
+
+
+def _run_zeroshot(provider: str, tmp_repo, hermes_image, docker_env) -> tuple[str, int]:
+    return _docker_run_hermes(_make_prompt(provider), tmp_repo, hermes_image, docker_env)
 
 
 def _find_implemented(data_dir: Path, expected_stmts: list) -> Path | None:
@@ -187,3 +193,45 @@ def _assert_results(output: str, exit_code: int, data_dir: Path):
 def test_zeroshot_fixes_calculator(provider, tmp_repo, hermes_image, docker_env):
     output, exit_code = _run_zeroshot(provider, tmp_repo, hermes_image, docker_env)
     _assert_results(output, exit_code, tmp_repo)
+
+
+def _make_step2_prompt() -> str:
+    return (
+        "The git repository at /opt/data/target-repo is already cloned locally. "
+        "Its remote origin is file:///opt/data/remote.git and its default branch is 'develop'. "
+        "Follow zeroshot skill step 2: navigate to this already-cloned repo and update it. "
+        "Do NOT run 'zeroshot run' — only perform the step 2 navigation and pull. "
+        "After pulling, check whether the file update.txt is now present in the repo "
+        "and report what git command you ran."
+    )
+
+
+@pytest.mark.skipif(
+    _conf.IS_CI and not _conf.ANTHROPIC_API_KEY,
+    reason="ANTHROPIC_API_KEY not set in CI",
+)
+def test_step2_pull_rebase_on_existing_repo(tmp_tracking_repo, hermes_image, docker_env):
+    """Integration: hermes uses 'git pull --rebase' (not 'git pull --rebase origin main')
+    when following zeroshot skill step 2 for an already-cloned repo.
+
+    The remote's only branch is 'develop', so 'git pull --rebase origin main' fails
+    with 'couldn't find remote ref main'. 'git pull --rebase' succeeds.
+    update.txt appearing in target-repo proves the correct command was used.
+    """
+    output, exit_code = _docker_run_hermes(
+        _make_step2_prompt(), tmp_tracking_repo, hermes_image, docker_env
+    )
+    target_repo = tmp_tracking_repo / "target-repo"
+    tree = _dir_tree(tmp_tracking_repo)
+    context = (
+        f"--- EXIT CODE ---\n{exit_code}\n"
+        f"--- DIRECTORY TREE ---\n{tree}\n"
+        f"--- OUTPUT (last 60 lines) ---\n"
+        + "\n".join(output.splitlines()[-60:])
+    )
+    assert exit_code == 0, f"docker run exited {exit_code}.\n{context}"
+    assert (target_repo / "update.txt").exists(), (
+        "update.txt not found in target-repo after hermes ran step 2. "
+        "Likely cause: hermes used 'git pull --rebase origin main' which fails "
+        "when the remote has no 'main' branch.\n" + context
+    )

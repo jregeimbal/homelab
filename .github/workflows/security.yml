@@ -1,12 +1,13 @@
 ---
-name: Security Review
+# Security review is now the security-review job in ci.yml, where it runs on
+# PRs after all other checks pass. This file is kept for manual dispatch only.
+name: Security Review (manual)
 
 permissions:
-  pull-requests: write
   contents: read
 
 on:
-  pull_request:
+  workflow_dispatch:
 
 jobs:
   security:
@@ -14,10 +15,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.pull_request.head.sha || github.sha }}
           fetch-depth: 2
 
       - uses: anthropics/claude-code-security-review@main
         with:
-          comment-pr: true
-          claude-api-key: ${{ secrets.CLAUDE_API_KEY }}
+          claude-api-key: ${{ secrets.ANTHROPIC_API_KEY_SECURITY_REVIEW }}
