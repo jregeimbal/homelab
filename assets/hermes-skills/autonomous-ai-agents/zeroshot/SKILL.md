@@ -1,7 +1,7 @@
 ---
 name: zeroshot
 description: Use when the user asks to implement a GitHub issue using zeroshot, run a multi-agent coding workflow, or autonomously implement and verify a code change with a resulting PR. Supports opencode (LM Studio, local) and claude (Anthropic API) providers. Launches zeroshot in daemon mode (--pr --provider <provider> -d), monitors progress via logs, and reports the final outcome.
-version: 1.5.0
+version: 1.3.0
 author: Jon Regeimbal
 license: MIT
 platforms: [linux, macos]
