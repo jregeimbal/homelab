@@ -37,7 +37,7 @@ OPENCODE_TIMEOUT = 300
 # Number of times zeroshot retries a failed validator task.
 # The test runs the same number of attempts so a single lucky pass does not
 # mask an intermittent failure.
-_VALIDATOR_ATTEMPTS = 3
+_VALIDATOR_ATTEMPTS = 10
 
 # Validator prompt representative of what zeroshot sends.
 # Crucially it requires the model to RUN BASH COMMANDS first (the step that
