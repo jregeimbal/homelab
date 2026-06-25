@@ -26,7 +26,7 @@ spec:
       values:
         agent:
           gateway_timeout: 1800
-          max_turns: 90
+          max_turns: 500
           restart_drain_timeout: 60
           tool_use_enforcement: true
         browser:
@@ -52,6 +52,10 @@ spec:
           backend: local
           cwd: .
           timeout: 180
+          env_passthrough:
+            - PATH
+            - GH_TOKEN
+            - GH_CONFIG_DIR
         whatsapp:
           reply_prefix: "\U0001F916 *Jon R Claw*\n──────\n"
         web:
