@@ -1,7 +1,7 @@
 ---
 name: zeroshot
 description: Use when the user asks to implement a GitHub issue using zeroshot, run a multi-agent coding workflow, or autonomously implement and verify a code change with a resulting PR. Supports opencode (LM Studio, local) and claude (Anthropic API) providers. Launches zeroshot in daemon mode (--pr --provider <provider> -d), monitors progress via logs, and reports the final outcome.
-version: 1.3.0
+version: 1.4.0
 author: Jon Regeimbal
 license: MIT
 platforms: [linux, macos]
@@ -88,14 +88,25 @@ Don't use for:
    ```
    Re-run as needed. Exit early if the status shows `VERIFIED` or `REJECTED`.
 
+   **If the cluster disappears from `zeroshot status` / `zeroshot list`**, do NOT assume failure. Zeroshot auto-deletes successful clusters after the PR is created — this is normal. To distinguish success from a true crash:
+   ```bash
+   grep "Cleaned up worktree isolation" ~/.zeroshot/<cluster-id>-daemon.log
+   ```
+   - Line present → cluster completed and auto-cleaned → check GitHub for the PR:
+     ```bash
+     gh pr list --repo <owner>/<repo> --state all --limit 5
+     ```
+   - Log file missing entirely → cluster may have crashed before starting. Report the situation to the user.
+
    **If status stays in `setup` for more than 2 minutes**, stop polling status and check the setup log instead:
    ```bash
-   tail -50 /opt/data/home/.zeroshot/<cluster-id>-daemon.log
+   tail -50 ~/.zeroshot/<cluster-id>-daemon.log
    ```
    Common causes: LM Studio unreachable (for `opencode`), Anthropic API key not injected (for `claude`). Report what the log shows to the user rather than continuing to poll.
 
 5. **Report the outcome** once the cluster finishes:
    - `VERIFIED` — PR was opened. Report the PR URL to the user.
+   - Cluster auto-deleted (gone from `zeroshot list`) — this means success with `--pr`. Find and report the PR URL via `gh pr list`.
    - `REJECTED` — zeroshot exhausted retries. Report the failure summary and ask whether to resume or adjust.
    - To resume after failure or interruption:
      ```bash
@@ -126,7 +137,8 @@ zeroshot resume <cluster-id>     # resume from last persisted checkpoint
 4. **Streaming logs.** Never use `zeroshot logs -f` or `-w` — they stream indefinitely and stall the agent. Use `zeroshot status <id>` in a short polling loop instead.
 5. **Launching multiple clusters.** Run `zeroshot run` exactly once per session. Check `zeroshot list` first — if a cluster already exists for this repo, use it. Launching extras wastes resources and creates confusion about which cluster to track.
 6. **Tight status polling.** Do not call `zeroshot status` repeatedly without sleeping. The `for i in 1 2 3` loop in step 4 includes `sleep 60` — that sleep is mandatory, not optional. Rapid-fire calls do not help and fill context with duplicate output.
-7. **Cluster stuck in setup.** If `State: setup` persists for more than 2 minutes, stop polling status and read the setup log (`tail -50 /opt/data/home/.zeroshot/<cluster-id>-daemon.log`). The log will reveal the actual error. Do not keep polling status — the state will not change until the underlying problem is fixed.
+7. **Cluster stuck in setup.** If `State: setup` persists for more than 2 minutes, stop polling status and read the setup log (`tail -50 ~/.zeroshot/<cluster-id>-daemon.log`). The log will reveal the actual error. Do not keep polling status — the state will not change until the underlying problem is fixed.
+8. **Cluster disappears from `zeroshot list` — this is success, not failure.** Zeroshot auto-deletes the cluster record after a successful `--pr` run. If a cluster you were tracking is suddenly missing, check `grep "Cleaned up worktree isolation" ~/.zeroshot/<cluster-id>-daemon.log` and `gh pr list --repo <owner>/<repo> --state all --limit 5` before concluding it failed. A missing cluster with a daemon log that ends in cleanup is the normal success path.
 
 ## Verification Checklist
 
