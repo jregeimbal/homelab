@@ -523,6 +523,7 @@ echo "Current branch: $CURRENT_BRANCH"
 DEFAULT_BRANCH="$(gh repo view --json defaultBranchRef --jq .defaultBranchRef.name 2>/dev/null || echo main)"
 if [ "$CURRENT_BRANCH" = "$DEFAULT_BRANCH" ]; then
   echo "BLOCKED: git-pusher is on the default branch '$CURRENT_BRANCH'. Pushing here would bypass the PR. This is a zeroshot configuration error — the agent must run in a worktree, not the main repo."
+  exit 1
 fi
 git push -u origin HEAD
 \`\`\`

@@ -37,3 +37,10 @@ RUN npm install -g @anthropic-ai/claude-code @the-open-engine/zeroshot && \
 # Patch git-pusher-template.js with branch guard fix pending upstream merge:
 # https://github.com/jregeimbal/zeroshot/tree/fix/git-pusher-default-branch-guard
 COPY assets/zeroshot-patches/git-pusher-template.js /usr/local/lib/node_modules/@the-open-engine/zeroshot/src/agents/git-pusher-template.js
+
+# Patch opencode adapter to pass --dir instead of relying on process CWD.
+# opencode follows .git file pointers back to the main repo when started via
+# process CWD, causing agents to operate on the main repo instead of the
+# worktree. Passing --dir <worktree> prevents gitdir resolution.
+# Pending upstream PR to zeroshot.
+COPY assets/zeroshot-patches/opencode-adapter.js /usr/local/lib/node_modules/@the-open-engine/zeroshot/lib/agent-cli-provider/adapters/opencode.js
