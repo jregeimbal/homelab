@@ -37,7 +37,7 @@ OPENCODE_TIMEOUT = 120
 # Number of times zeroshot retries a failed validator task.
 # The test runs the same number of attempts so a single lucky pass does not
 # mask an intermittent failure.
-_VALIDATOR_ATTEMPTS = 3
+_VALIDATOR_ATTEMPTS = 10
 
 # Validator prompt representative of what zeroshot sends.
 # Crucially it requires the model to RUN BASH COMMANDS first (the step that
@@ -64,19 +64,14 @@ Issue #12 fix: `import sys` was removed from inside a for-loop and all
 
 ## \U0001f534 OUTPUT FORMAT (CRITICAL)
 
-After running the commands above, you MUST respond with ONLY this JSON
-(no preamble, no explanation outside the JSON block):
+After running the commands above, respond with ONLY a JSON object with
+these three keys (no markdown fences, no preamble):
 
-```json
-{
-  "approved": true,
-  "summary": "one-line verdict under 100 chars",
-  "errors": []
-}
-```
+- "approved": boolean — true if the grep found no sys.stdout.write
+- "summary": string  — your one-sentence verdict (do NOT copy this line)
+- "errors": array   — list any blocking issues found, or empty array
 
-Set approved:true if the grep confirms no sys.stdout.write remains.
-Set approved:false and populate errors[] if problems were found.
+Do NOT include example values. Fill each field with your actual findings.
 """
 
 # Required fields and their types (from quick-validation.json schema)
@@ -93,8 +88,11 @@ def _run_opencode_direct(
     """Run opencode directly inside the hermes image (no hermes orchestration).
 
     Uses --format json so the output format matches what zeroshot uses in
-    production. HOME is set so opencode finds the config seeded by
-    _seed_hermes_data_dir.
+    production.
+
+    The s6 init sets HOME=$HERMES_HOME (not $HERMES_HOME/home), so opencode
+    looks for its config at $HERMES_HOME/.config/opencode/opencode.json =
+    /opt/data/.config/opencode/opencode.json. The caller must seed that path.
     """
     cmd = ["docker", "run", "--rm", "--network", "host"]
     if docker_env.get("lmstudio_add_host"):
@@ -102,14 +100,15 @@ def _run_opencode_direct(
 
     cmd += [
         "-v", f"{data_dir}:/opt/data",
-        "-e", "HOME=/opt/data/home",
+        # HERMES_HOME must match the mount point so the s6 init sets HOME correctly.
+        "-e", "HERMES_HOME=/opt/data",
         "-e", "OPENCODE_TELEMETRY_DISABLED=1",
     ]
 
     if docker_env.get("opencode_config_path"):
         cmd += [
             "-v",
-            f"{docker_env['opencode_config_path']}:/opt/data/home/.config/opencode/opencode.json:ro",
+            f"{docker_env['opencode_config_path']}:/opt/data/.config/opencode/opencode.json:ro",
         ]
 
     # --format json produces NDJSON events so text can be reliably extracted.
@@ -176,9 +175,19 @@ def _extract_json_object(text: str) -> dict | None:
     return None
 
 
-def _assert_valid_validator_json(parsed: dict | None, attempt: int, context: str) -> None:
+_PLACEHOLDER_SUMMARY = "one-line verdict under 100 chars"
+
+
+def _assert_valid_validator_json(
+    parsed: dict | None, llm_text: str, attempt: int, context: str
+) -> None:
+    assert llm_text, (
+        f"Attempt {attempt}/{_VALIDATOR_ATTEMPTS}: opencode produced no LLM text events.\n"
+        "The model never responded — likely a config or connection failure.\n"
+        + context
+    )
     assert parsed is not None, (
-        f"Attempt {attempt}/{_VALIDATOR_ATTEMPTS}: no valid JSON object in opencode output.\n"
+        f"Attempt {attempt}/{_VALIDATOR_ATTEMPTS}: no valid JSON object in LLM output.\n"
         "The model must respond with a JSON object containing approved/summary/errors.\n"
         + context
     )
@@ -193,6 +202,14 @@ def _assert_valid_validator_json(parsed: dict | None, attempt: int, context: str
             f"field '{field}' must be {expected_type.__name__}, "
             f"got {type(parsed[field]).__name__}: {parsed[field]!r}\n" + context
         )
+    # Guard against the model echoing the placeholder from the prompt instead of
+    # generating a real verdict.
+    assert parsed.get("summary") != _PLACEHOLDER_SUMMARY, (
+        f"Attempt {attempt}/{_VALIDATOR_ATTEMPTS}: "
+        "'summary' contains the placeholder text from the prompt — "
+        "the model copied the example instead of generating a real verdict.\n"
+        + context
+    )
 
 
 @pytest.mark.skipif(
@@ -219,7 +236,16 @@ def test_opencode_validator_produces_required_json_fields(
     """
     data_dir = tmp_path / "data"
     data_dir.mkdir()
-    _conf._seed_hermes_data_dir(data_dir)
+
+    # Seed opencode config at the path the s6 init exposes as $HOME/.config/opencode/.
+    # The s6 init sets HOME=$HERMES_HOME (i.e. /opt/data), NOT $HERMES_HOME/home,
+    # so opencode looks at /opt/data/.config/opencode/opencode.json.
+    opencode_cfg_dir = data_dir / ".config" / "opencode"
+    opencode_cfg_dir.mkdir(parents=True)
+    (opencode_cfg_dir / "opencode.json").write_text(
+        __import__("json").dumps(_conf._OPENCODE_CONFIG, indent=2)
+    )
+
     _conf._chmod_for_hermes(data_dir)
 
     for attempt in range(1, _VALIDATOR_ATTEMPTS + 1):
@@ -235,4 +261,4 @@ def test_opencode_validator_produces_required_json_fields(
         tail = "\n".join((llm_text or raw_output).splitlines()[-40:])
         context = f"--- attempt {attempt} output (last 40 lines) ---\n{tail}"
 
-        _assert_valid_validator_json(parsed, attempt, context)
+        _assert_valid_validator_json(parsed, llm_text, attempt, context)
