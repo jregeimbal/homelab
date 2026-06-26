@@ -132,7 +132,7 @@ zeroshot resume <cluster-id>     # resume from last persisted checkpoint
 ## Common Pitfalls
 
 1. **Not in the repo root.** Zeroshot creates worktrees relative to the current directory. Always `cd` into the repo before running.
-2. **GitHub auth missing.** Run `gh auth status` first. The container has `gh` configured via `GH_CONFIG_DIR`; if it fails, report to the user rather than proceeding.
+2. **GitHub auth missing.** Run `gh auth status` first. The container has `gh` pre-configured; if it fails, report to the user rather than proceeding.
 3. **Missing remote.** Zeroshot resolves issue numbers from the repo's `origin` remote. Ensure the cloned repo has a GitHub `origin`.
 4. **Streaming logs.** Never use `zeroshot logs -f` or `-w` — they stream indefinitely and stall the agent. Use `zeroshot status <id>` in a short polling loop instead.
 5. **Launching multiple clusters.** Run `zeroshot run` exactly once per session. Check `zeroshot list` first — if a cluster already exists for this repo, use it. Launching extras wastes resources and creates confusion about which cluster to track.

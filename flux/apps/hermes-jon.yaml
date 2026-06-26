@@ -54,8 +54,7 @@ spec:
           timeout: 180
           env_passthrough:
             - PATH
-            - GH_TOKEN
-            - GH_CONFIG_DIR
+            - GITHUB_TOKEN
         whatsapp:
           reply_prefix: "\U0001F916 *Jon R Claw*\n──────\n"
         web:
@@ -94,7 +93,6 @@ spec:
           - openhue
           - xurl
     env:
-      GH_CONFIG_DIR: /opt/data/gh-config
       ANTHROPIC_AUTH_TOKEN: lmstudio
       ANTHROPIC_BASE_URL: http://jonathans-mac-studio:1234
       CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC: '1'

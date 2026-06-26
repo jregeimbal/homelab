@@ -22,7 +22,7 @@ Both `claude` (via LM Studio) and `opencode` are already in the image. The SKILL
 
 ### Isolation: --pr
 
-Zeroshot runs with `--pr`, creating an isolated git worktree and opening a GitHub PR automatically. `gh` is already authenticated in the container via `GH_CONFIG_DIR` and the sealed `GITHUB_TOKEN` secret.
+Zeroshot runs with `--pr`, creating an isolated git worktree and opening a GitHub PR automatically. `gh` is already authenticated in the container via the sealed `GITHUB_TOKEN` secret.
 
 ### Repo resolution: user specifies
 
