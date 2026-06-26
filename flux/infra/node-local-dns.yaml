@@ -1,0 +1,167 @@
+---
+# NodeLocal DNSCache — eliminates the conntrack UDP race condition that causes
+# intermittent DNS timeouts in pods. Runs CoreDNS on every node via hostNetwork,
+# bound to 169.254.20.10 (link-local). An init container assigns that IP to
+# loopback so it lands in the host's LOCAL routing table and is reachable from
+# pods through their veth pair without any iptables interception.
+#
+# Note: k8s-dns-node-cache (k8s.gcr.io/dns/k8s-dns-node-cache) was tried but
+# its vishvananda/netlink dummy-interface type assertion fails on Linux 6.19+/7.x.
+# This approach uses plain CoreDNS and avoids the wrapper binary entirely.
+#
+# Requires kubelet clusterDNS=169.254.20.10 (set in k0sctl.yaml workerProfiles).
+# Deploy this first, verify all pods are Running, then run: k0sctl apply -f k0sctl.yaml
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: node-local-dns
+  namespace: kube-system
+  labels:
+    k8s-app: node-local-dns
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: node-local-dns
+  namespace: kube-system
+  labels:
+    k8s-app: node-local-dns
+data:
+  Corefile: |
+    cluster.local:53 {
+        errors
+        cache {
+            success 9984 30
+            denial 9984 5
+        }
+        reload
+        loop
+        bind 169.254.20.10
+        forward . 10.96.0.10:53 {
+            force_tcp
+        }
+        prometheus :9253
+        health 169.254.20.10:9091
+    }
+    in-addr.arpa:53 {
+        errors
+        cache 30
+        reload
+        loop
+        bind 169.254.20.10
+        forward . 10.96.0.10:53 {
+            force_tcp
+        }
+        prometheus :9253
+    }
+    ip6.arpa:53 {
+        errors
+        cache 30
+        reload
+        loop
+        bind 169.254.20.10
+        forward . 10.96.0.10:53 {
+            force_tcp
+        }
+        prometheus :9253
+    }
+    .:53 {
+        errors
+        cache 30
+        reload
+        loop
+        bind 169.254.20.10
+        forward . 100.100.100.100
+        prometheus :9253
+    }
+---
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: node-local-dns
+  namespace: kube-system
+  labels:
+    k8s-app: node-local-dns
+spec:
+  updateStrategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 1
+  selector:
+    matchLabels:
+      k8s-app: node-local-dns
+  template:
+    metadata:
+      labels:
+        k8s-app: node-local-dns
+    spec:
+      priorityClassName: system-node-critical
+      serviceAccountName: node-local-dns
+      hostNetwork: true
+      dnsPolicy: Default
+      tolerations:
+        - operator: Exists
+          effect: NoSchedule
+        - operator: Exists
+          effect: NoExecute
+      initContainers:
+        - name: setup-link-local
+          image: busybox:1.36
+          command: ["sh", "-c"]
+          args:
+            - |
+              ip addr del 169.254.20.10/32 dev lo 2>/dev/null
+              ip addr add 169.254.20.10/32 dev lo
+          securityContext:
+            privileged: true
+      containers:
+        - name: node-cache
+          image: registry.k8s.io/coredns/coredns:v1.14.2
+          args:
+            - "-conf"
+            - "/etc/Corefile"
+          ports:
+            - containerPort: 53
+              name: dns
+              protocol: UDP
+            - containerPort: 53
+              name: dns-tcp
+              protocol: TCP
+            - containerPort: 9253
+              name: metrics
+              protocol: TCP
+          livenessProbe:
+            httpGet:
+              host: 169.254.20.10
+              path: /health
+              port: 9091
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            timeoutSeconds: 5
+          readinessProbe:
+            httpGet:
+              host: 169.254.20.10
+              path: /health
+              port: 9091
+            initialDelaySeconds: 15
+            periodSeconds: 10
+            timeoutSeconds: 5
+          resources:
+            requests:
+              cpu: 25m
+              memory: 5Mi
+          securityContext:
+            capabilities:
+              add:
+                - NET_BIND_SERVICE
+          volumeMounts:
+            - mountPath: /etc/Corefile
+              name: config-volume
+              subPath: Corefile
+      volumes:
+        - name: config-volume
+          configMap:
+            name: node-local-dns
+            items:
+              - key: Corefile
+                path: Corefile
