@@ -73,12 +73,6 @@ spec:
           type: etcd
         telemetry:
           enabled: true
-        workerProfiles:
-          - name: default
-            values:
-              clusterDNS:
-                - 169.254.20.10
-              clusterDomain: cluster.local
   options:
     wait:
       enabled: true
