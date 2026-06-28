@@ -1,2 +1,6 @@
+[user]
+	name = homelab-coder
+	email = homelabcoder@gmail.com
+
 [credential "https://github.com"]
 	helper = !gh auth git-credential
