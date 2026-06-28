@@ -1,6 +1,6 @@
 {
   "$schema": "https://opencode.ai/config.json",
-  "model": "lmstudio/qwen/qwen3.6-35b-a3b",
+  "model": "lmstudio/google/gemma-4-26b-a4b",
   "provider": {
     "lmstudio": {
       "npm": "@ai-sdk/openai-compatible",
@@ -9,8 +9,8 @@
         "baseURL": "http://jonathans-mac-studio:1234/v1"
       },
       "models": {
-        "qwen/qwen3.6-35b-a3b": {
-          "name": "qwen/qwen3.6-35b-a3b"
+        "google/gemma-4-26b-a4b": {
+          "name": "google/gemma-4-26b-a4b"
         }
       }
     }
