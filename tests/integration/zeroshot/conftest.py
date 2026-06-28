@@ -13,7 +13,7 @@ collect_ignore_glob = ["fixture/*.py"]
 FIXTURE_DIR = Path(__file__).parent / "fixture"
 DEFAULT_IMAGE = "ghcr.io/jregeimbal/hermes-agent-jregeimbal-homelab:local-dev"
 LMSTUDIO_BASE_URL = os.environ.get("LMSTUDIO_BASE_URL", "http://jonathans-mac-studio:1234/v1")
-LMSTUDIO_MODEL = os.environ.get("LMSTUDIO_MODEL", "qwen/qwen3.6-35b-a3b")
+LMSTUDIO_MODEL = os.environ.get("LMSTUDIO_MODEL", "google/gemma-4-26b-a4b")
 
 # GitHub Actions (and other standard CI environments) set CI=true.
 # In CI: hermes uses Anthropic API; opencode provider is skipped (no LM Studio).

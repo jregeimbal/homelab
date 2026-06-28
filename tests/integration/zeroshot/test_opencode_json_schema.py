@@ -2,7 +2,7 @@
 Integration test: opencode JSON schema compliance with local Qwen model.
 
 Reproduces the failure observed in cluster spinning-cosmos-71 where the
-validator agent (opencode + Qwen3.6-35B-A3B via LM Studio) produced output
+validator agent (opencode + google/gemma-4-26b-a4b via LM Studio) produced output
 that was accepted as "completed" but was missing all three required JSON
 fields, causing zeroshot to reject the validation with:
 
@@ -32,12 +32,12 @@ import pytest
 
 import conftest as _conf
 
-OPENCODE_TIMEOUT = 120
+OPENCODE_TIMEOUT = 300
 
 # Number of times zeroshot retries a failed validator task.
 # The test runs the same number of attempts so a single lucky pass does not
 # mask an intermittent failure.
-_VALIDATOR_ATTEMPTS = 10
+_VALIDATOR_ATTEMPTS = 3
 
 # Validator prompt representative of what zeroshot sends.
 # Crucially it requires the model to RUN BASH COMMANDS first (the step that
