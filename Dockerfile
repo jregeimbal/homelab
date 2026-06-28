@@ -34,9 +34,13 @@ RUN npm install -g @anthropic-ai/claude-code @the-open-engine/zeroshot && \
     claude --version && \
     zeroshot --version
 
-# Patch git-pusher-template.js with branch guard fix pending upstream merge:
-# https://github.com/jregeimbal/zeroshot/tree/fix/git-pusher-default-branch-guard
+# Patch git-pusher-template.js: branch guard fix + PR description with overview
+# and quality gate evidence (feat/quality-gate-pr-description, pending upstream merge).
 COPY assets/zeroshot-patches/git-pusher-template.js /usr/local/lib/node_modules/@the-open-engine/zeroshot/src/agents/git-pusher-template.js
+
+# Patch agent-context-sections.js: inject quality gate evidence from the triggering
+# VALIDATION_RESULT message into the git-pusher agent context (feat/quality-gate-pr-description).
+COPY assets/zeroshot-patches/agent-context-sections.js /usr/local/lib/node_modules/@the-open-engine/zeroshot/src/agent/agent-context-sections.js
 
 # Patch opencode adapter to pass --dir instead of relying on process CWD.
 # opencode follows .git file pointers back to the main repo when started via
