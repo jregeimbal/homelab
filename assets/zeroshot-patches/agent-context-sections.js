@@ -351,7 +351,12 @@ function buildQualityGateEvidenceSection(qualityGates) {
     if (truncated) {
       parts.push('  output:');
       for (const line of truncated.text.split('\n')) {
-        parts.push(`  ${line}`);
+        // Strip lines that exactly match the heredoc delimiter used in the
+        // git-pusher PR body template — a bare EOFBODY line would close the
+        // heredoc early, exposing subsequent attacker-controlled lines to shell
+        // evaluation outside the quoted heredoc boundary.
+        const safeLine = line === 'EOFBODY' ? '[redacted: heredoc delimiter]' : line;
+        parts.push(`  ${safeLine}`);
       }
       if (truncated.truncated) parts.push('  [truncated]');
     }
