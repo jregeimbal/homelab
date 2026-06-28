@@ -17,7 +17,7 @@ metadata:
 
 Zeroshot orchestrates planner → implementer → validators in an isolated git worktree. Independent validators verify the work without seeing the implementer's reasoning (blind validation), looping until the change is verified or rejected. Tasks scale automatically: trivial tasks use 1 agent, critical tasks use up to 7. Use it when the user wants autonomous multi-agent implementation of a GitHub issue with a resulting PR.
 
-Run in daemon mode (`-d`) so hermes is not blocked for the entire run — zeroshot clusters can take 30–90 minutes for non-trivial tasks.
+Run in daemon mode (`-d`) so hermes is not blocked for the entire run — zeroshot clusters can take 30-180 minutes for non-trivial tasks.
 
 ## Provider Selection
 
@@ -82,11 +82,16 @@ Don't use for:
    ```
    Do NOT use `zeroshot logs -f` or `-w` — those stream indefinitely and block the agent. Use status-based polling instead.
 
-   Poll with a mandatory sleep between each check — rapid-fire status calls do not speed anything up:
+   Poll with a mandatory sleep between each check — rapid-fire status calls do not speed anything up.
+   **Keep polling until the status shows `VERIFIED` or `REJECTED`. Do not stop for any other status.**
    ```bash
-   for i in 1 2 3; do zeroshot status <cluster-id>; sleep 60; done
+   # Repeat this block until you see VERIFIED or REJECTED — there is no fixed iteration limit.
+   zeroshot status <cluster-id>; sleep 60
+   # → if status is VERIFIED or REJECTED: stop and proceed to step 5
+   # → if status is anything else (running, setup, validating, etc.): run this block again
    ```
-   Re-run as needed. Exit early if the status shows `VERIFIED` or `REJECTED`.
+   A typical non-trivial cluster takes 30-180 minutes. You will likely need to run the block 20-180 times.
+   Never stop polling because of time elapsed or because you have polled "enough" — only `VERIFIED` or `REJECTED` ends the loop.
 
    **If the cluster disappears from `zeroshot status` / `zeroshot list`**, do NOT assume failure. Zeroshot auto-deletes successful clusters after the PR is created — this is normal. To distinguish success from a true crash:
    ```bash
@@ -136,7 +141,7 @@ zeroshot resume <cluster-id>     # resume from last persisted checkpoint
 3. **Missing remote.** Zeroshot resolves issue numbers from the repo's `origin` remote. Ensure the cloned repo has a GitHub `origin`.
 4. **Streaming logs.** Never use `zeroshot logs -f` or `-w` — they stream indefinitely and stall the agent. Use `zeroshot status <id>` in a short polling loop instead.
 5. **Launching multiple clusters.** Run `zeroshot run` exactly once per session. Check `zeroshot list` first — if a cluster already exists for this repo, use it. Launching extras wastes resources and creates confusion about which cluster to track.
-6. **Tight status polling.** Do not call `zeroshot status` repeatedly without sleeping. The `for i in 1 2 3` loop in step 4 includes `sleep 60` — that sleep is mandatory, not optional. Rapid-fire calls do not help and fill context with duplicate output.
+6. **Stopping too early.** The only valid reason to stop polling is seeing `VERIFIED` or `REJECTED` in the output. Do not stop because the loop ran a certain number of times, because it "seems like it's taking too long," or because you ran out of patience. If the status is anything else, sleep 60 seconds and check again. Do not call `zeroshot status` without sleeping in between — rapid-fire calls fill context with duplicate output and do not speed anything up.
 7. **Cluster stuck in setup.** If `State: setup` persists for more than 2 minutes, stop polling status and read the setup log (`tail -50 ~/.zeroshot/<cluster-id>-daemon.log`). The log will reveal the actual error. Do not keep polling status — the state will not change until the underlying problem is fixed.
 8. **Cluster disappears from `zeroshot list` — this is success, not failure.** Zeroshot auto-deletes the cluster record after a successful `--pr` run. If a cluster you were tracking is suddenly missing, check `grep "Cleaned up worktree isolation" ~/.zeroshot/<cluster-id>-daemon.log` and `gh pr list --repo <owner>/<repo> --state all --limit 5` before concluding it failed. A missing cluster with a daemon log that ends in cleanup is the normal success path.
 
