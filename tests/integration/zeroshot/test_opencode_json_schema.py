@@ -2,7 +2,7 @@
 Integration test: opencode JSON schema compliance with local Qwen model.
 
 Reproduces the failure observed in cluster spinning-cosmos-71 where the
-validator agent (opencode + google/gemma-4-26b-a4b via LM Studio) produced output
+validator agent (opencode + qwen/qwen3.6-35b-a3b via LM Studio) produced output
 that was accepted as "completed" but was missing all three required JSON
 fields, causing zeroshot to reject the validation with:
 
