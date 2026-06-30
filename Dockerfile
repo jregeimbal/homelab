@@ -28,7 +28,6 @@ RUN ARCH=$(dpkg --print-architecture) && \
 
 COPY assets/claude-settings.json /opt/config-defaults/claude/settings.json
 COPY assets/gitconfig /opt/config-defaults/git/gitconfig
-COPY assets/hermes-skills/autonomous-ai-agents/zeroshot/SKILL.md /opt/config-defaults/hermes-skills/autonomous-ai-agents/zeroshot/SKILL.md
 RUN npm install -g @anthropic-ai/claude-code @the-open-engine/zeroshot && \
     npm cache clean --force && \
     claude --version && \
