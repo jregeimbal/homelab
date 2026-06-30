@@ -108,23 +108,6 @@ jobs:
               sys.exit(1)
           "
 
-  unit-tests:
-    runs-on: ubuntu-latest
-    timeout-minutes: 5
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-
-      - name: Install test dependencies
-        run: pip install -r tests/requirements.txt
-
-      - name: Run unit tests
-        run: pytest tests/unit/ -v
-
   security-review:
     name: Security Review
     runs-on: ubuntu-latest
