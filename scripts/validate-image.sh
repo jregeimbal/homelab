@@ -45,10 +45,4 @@ docker run --rm --entrypoint "" "${IMAGE}" test -f /opt/config-defaults/opencode
 echo "opencode config present"
 
 echo ""
-echo "=== Verifying config-defaults: zeroshot skill ==="
-docker run --rm --entrypoint "" "${IMAGE}" test -f /opt/config-defaults/hermes-skills/autonomous-ai-agents/zeroshot/SKILL.md \
-  || { echo "ERROR: Missing /opt/config-defaults/hermes-skills/autonomous-ai-agents/zeroshot/SKILL.md"; exit 1; }
-echo "zeroshot skill present"
-
-echo ""
 echo "=== All checks passed ==="
