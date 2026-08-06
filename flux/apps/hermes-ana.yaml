@@ -85,17 +85,61 @@ spec:
               - ALL
           seccompProfile:
             type: RuntimeDefault
+    extraInitContainers:
+      - args:
+          - |
+            set -eu
+            chown -R 10000:10000 /opt/data
+            chown 10000:10000 /mnt/run
+        command:
+          - /bin/sh
+          - -ec
+        image: ghcr.io/jregeimbal/hermes-agent-jregeimbal-homelab:v2026.7.7.2-bc2a185
+        imagePullPolicy: IfNotPresent
+        name: fix-data-ownership
+        securityContext:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
+          runAsNonRoot: false
+          runAsUser: 0
+          runAsGroup: 0
+          seccompProfile:
+            type: RuntimeDefault
+        volumeMounts:
+          - mountPath: /opt/data
+            name: data
+          - mountPath: /tmp
+            name: tmp
+          - mountPath: /mnt/run
+            name: run-tmp
     extraVolumeMounts:
+      - mountPath: /run
+        name: run-tmp
       - mountPath: /opt/hermes/scripts
         name: whatsapp-scripts
     extraVolumes:
+      - name: run-tmp
+        emptyDir: {}
       - name: whatsapp-scripts
         persistentVolumeClaim:
           claimName: hermes-ana-data
     fullnameOverride: hermes-ana
     image:
       repository: ghcr.io/jregeimbal/hermes-agent-jregeimbal-homelab
-      tag: "v2026.6.19-34c59c3"
+      tag: "v2026.7.7.2-bc2a185"
+      pullPolicy: IfNotPresent
+    podSecurityContext:
+      fsGroup: 10000
+      fsGroupChangePolicy: OnRootMismatch
+      seccompProfile:
+        type: RuntimeDefault
+    securityContext:
+      allowPrivilegeEscalation: false
+      readOnlyRootFilesystem: true
+      runAsUser: 10000
+      runAsGroup: 10000
+      seccompProfile:
+        type: RuntimeDefault
     persistence:
       enabled: true
       size: 5Gi
@@ -108,6 +152,11 @@ spec:
           port: 8642
           protocol: TCP
           targetPort: 8642
+        - containerPort: 9119
+          name: desktop
+          port: 9119
+          protocol: TCP
+          targetPort: 9119
   install:
     remediation:
       retries: 3

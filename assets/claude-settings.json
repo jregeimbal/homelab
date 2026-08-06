@@ -1,4 +1,27 @@
 {
-  "theme": "dark",
-  "model": "qwen/qwen3.6-35b-a3b"
+  "model": "sonnet",
+  "enabledPlugins": {
+    "brnby@brnby": true,
+    "superpowers@superpowers-marketplace": true,
+    "superpowers-chrome@superpowers-marketplace": true,
+    "elements-of-style@superpowers-marketplace": true,
+    "episodic-memory@superpowers-marketplace": true,
+    "superpowers-developing-for-claude-code@superpowers-marketplace": true,
+    "double-shot-latte@superpowers-marketplace": true
+  },
+  "extraKnownMarketplaces": {
+    "brnby": {
+      "source": {
+        "source": "github",
+        "repo": "yorch/claude-skills"
+      }
+    },
+    "superpowers-marketplace": {
+      "source": {
+        "source": "github",
+        "repo": "obra/superpowers-marketplace"
+      }
+    }
+  },
+  "theme": "dark"
 }

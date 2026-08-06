@@ -1,0 +1,191 @@
+---
+# NodeLocal DNSCache — eliminates the conntrack UDP race condition that causes
+# intermittent DNS timeouts in pods. Runs CoreDNS on every node via hostNetwork,
+# bound to 169.254.20.10 (link-local).
+#
+# Two init containers set up the host networking before CoreDNS starts:
+#   1. setup-lo:       adds 169.254.20.10/32 to loopback (LOCAL routing table)
+#   2. setup-iptables: DNATs pod DNS traffic (10.96.0.10:53 → 169.254.20.10:53)
+#                      in PREROUTING only — NOT OUTPUT, which would loop CoreDNS's
+#                      own upstream forwarding back to itself.
+#
+# Pods keep nameserver 10.96.0.10 in resolv.conf (no kubelet change needed);
+# iptables transparently redirects to the local cache on every node.
+# cluster.local queries forward to CoreDNS via TCP (force_tcp removes the
+# conntrack race on the cache→CoreDNS leg). External queries go directly to
+# 100.100.100.100 (Tailscale MagicDNS), bypassing ConnTrack entirely.
+#
+# Note: k8s-dns-node-cache was tried but its vishvananda/netlink dummy-interface
+# type assertion fails on Linux 6.19+/7.x kernels. This approach uses plain
+# CoreDNS v1.14.2 and avoids the wrapper binary entirely.
+#
+# Note: k0s forbids setting clusterDNS in workerProfiles (it computes it from
+# serviceCIDR). The iptables DNAT approach is used instead.
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: node-local-dns
+  namespace: kube-system
+  labels:
+    k8s-app: node-local-dns
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: node-local-dns
+  namespace: kube-system
+  labels:
+    k8s-app: node-local-dns
+data:
+  Corefile: |
+    cluster.local:53 {
+        errors
+        cache {
+            success 9984 30
+            denial 9984 5
+        }
+        reload
+        loop
+        bind 169.254.20.10
+        forward . 10.96.0.10:53 {
+            force_tcp
+        }
+        prometheus :9253
+        health 169.254.20.10:9091
+    }
+    in-addr.arpa:53 {
+        errors
+        cache 30
+        reload
+        loop
+        bind 169.254.20.10
+        forward . 10.96.0.10:53 {
+            force_tcp
+        }
+        prometheus :9253
+    }
+    ip6.arpa:53 {
+        errors
+        cache 30
+        reload
+        loop
+        bind 169.254.20.10
+        forward . 10.96.0.10:53 {
+            force_tcp
+        }
+        prometheus :9253
+    }
+    .:53 {
+        errors
+        cache 30
+        reload
+        loop
+        bind 169.254.20.10
+        forward . 100.100.100.100
+        prometheus :9253
+    }
+---
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: node-local-dns
+  namespace: kube-system
+  labels:
+    k8s-app: node-local-dns
+spec:
+  updateStrategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 1
+  selector:
+    matchLabels:
+      k8s-app: node-local-dns
+  template:
+    metadata:
+      labels:
+        k8s-app: node-local-dns
+    spec:
+      priorityClassName: system-node-critical
+      serviceAccountName: node-local-dns
+      hostNetwork: true
+      dnsPolicy: Default
+      tolerations:
+        - operator: Exists
+          effect: NoSchedule
+        - operator: Exists
+          effect: NoExecute
+      initContainers:
+        - name: setup-lo
+          image: busybox:1.36
+          command: ["sh", "-c"]
+          args:
+            - |
+              ip addr del 169.254.20.10/32 dev lo 2>/dev/null
+              ip addr add 169.254.20.10/32 dev lo
+          securityContext:
+            privileged: true
+        - name: setup-iptables
+          image: alpine:3.20
+          command: ["sh", "-c"]
+          args:
+            - |
+              apk add -q iptables
+              # Remove stale rules from any previous pod on this node
+              iptables -t nat -D PREROUTING -p udp --dport 53 -d 10.96.0.10 -j DNAT --to-destination 169.254.20.10 2>/dev/null
+              iptables -t nat -D PREROUTING -p tcp --dport 53 -d 10.96.0.10 -j DNAT --to-destination 169.254.20.10 2>/dev/null
+              # Add DNAT rules before kube-proxy's KUBE-SERVICES chain
+              iptables -t nat -I PREROUTING 1 -p udp --dport 53 -d 10.96.0.10 -j DNAT --to-destination 169.254.20.10
+              iptables -t nat -I PREROUTING 1 -p tcp --dport 53 -d 10.96.0.10 -j DNAT --to-destination 169.254.20.10
+          securityContext:
+            privileged: true
+      containers:
+        - name: node-cache
+          image: registry.k8s.io/coredns/coredns:v1.14.2
+          args:
+            - "-conf"
+            - "/etc/Corefile"
+          ports:
+            - containerPort: 53
+              name: dns
+              protocol: UDP
+            - containerPort: 53
+              name: dns-tcp
+              protocol: TCP
+            - containerPort: 9253
+              name: metrics
+              protocol: TCP
+          livenessProbe:
+            httpGet:
+              host: 169.254.20.10
+              path: /health
+              port: 9091
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            timeoutSeconds: 5
+          readinessProbe:
+            httpGet:
+              host: 169.254.20.10
+              path: /health
+              port: 9091
+            initialDelaySeconds: 15
+            periodSeconds: 10
+            timeoutSeconds: 5
+          resources:
+            requests:
+              cpu: 25m
+              memory: 5Mi
+          securityContext:
+            capabilities:
+              add:
+                - NET_BIND_SERVICE
+          volumeMounts:
+            - mountPath: /etc/Corefile
+              name: config-volume
+              subPath: Corefile
+      volumes:
+        - name: config-volume
+          configMap:
+            name: node-local-dns
+            items:
+              - key: Corefile
+                path: Corefile

@@ -107,3 +107,22 @@ jobs:
                   print(e)
               sys.exit(1)
           "
+
+  security-review:
+    name: Security Review
+    runs-on: ubuntu-latest
+    needs: [yaml-lint, k8s-validation, secret-scanning, json-lint]
+    if: github.event_name == 'pull_request'
+    permissions:
+      pull-requests: write
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 2
+
+      - uses: anthropics/claude-code-security-review@main
+        with:
+          comment-pr: true
+          claude-api-key: ${{ secrets.ANTHROPIC_API_KEY_SECURITY_REVIEW }}

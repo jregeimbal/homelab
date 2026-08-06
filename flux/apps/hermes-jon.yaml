@@ -26,7 +26,7 @@ spec:
       values:
         agent:
           gateway_timeout: 1800
-          max_turns: 90
+          max_turns: 500
           restart_drain_timeout: 60
           tool_use_enforcement: true
         browser:
@@ -42,6 +42,7 @@ spec:
           default: qwen/qwen3.6-35b-a3b
           provider: custom
         security:
+          approval_mode: "smart"
           redact_secrets: true
           tirith_enabled: true
           tirith_fail_open: true
@@ -51,10 +52,18 @@ spec:
           backend: local
           cwd: .
           timeout: 180
+          env_passthrough:
+            - PATH
+            - GITHUB_TOKEN
         whatsapp:
           reply_prefix: "\U0001F916 *Jon R Claw*\n──────\n"
         web:
           backend: firecrawl
+        mcp_servers:
+          context7:
+            url: "https://mcp.context7.com/mcp"
+            headers:
+              CONTEXT7_API_KEY: "ctx7sk-f038e7b8-560b-4116-b059-f2fbbf7f365d"
       skills:
         disabled:
           - yuanbao
@@ -123,7 +132,7 @@ spec:
           seccompProfile:
             type: RuntimeDefault
       - name: hermes-desktop
-        image: ghcr.io/jregeimbal/hermes-agent-jregeimbal-homelab:v2026.6.19-34c59c3
+        image: ghcr.io/jregeimbal/hermes-agent-jregeimbal-homelab:v2026.7.7.2-bc2a185
         imagePullPolicy: IfNotPresent
         command:
           - hermes
@@ -157,6 +166,8 @@ spec:
             memory: 128Mi
         securityContext:
           allowPrivilegeEscalation: false
+          runAsUser: 10000
+          runAsGroup: 10000
           seccompProfile:
             type: RuntimeDefault
         volumeMounts:
@@ -175,12 +186,13 @@ spec:
         command:
           - /bin/sh
           - -ec
-        image: ghcr.io/jregeimbal/hermes-agent-jregeimbal-homelab:v2026.6.19-34c59c3
+        image: ghcr.io/jregeimbal/hermes-agent-jregeimbal-homelab:v2026.7.7.2-bc2a185
         imagePullPolicy: IfNotPresent
         name: copy-hermes-source
         securityContext:
           allowPrivilegeEscalation: false
           readOnlyRootFilesystem: true
+          runAsNonRoot: false
           runAsUser: 0
           runAsGroup: 0
           seccompProfile:
@@ -193,16 +205,27 @@ spec:
       - args:
           - |
             set -eu
-            chown -R 10000:10000 /opt/data
+            if [ ! -f /opt/data/home/.gitconfig ]; then
+              cp /opt/config-defaults/git/gitconfig /opt/data/home/.gitconfig
+            fi
+            if [ ! -f /opt/data/home/.claude/settings.json ]; then
+              mkdir -p /opt/data/home/.claude
+              cp /opt/config-defaults/claude/settings.json /opt/data/home/.claude/settings.json
+            fi
+            if [ ! -f /opt/data/home/.config/opencode/opencode.json ]; then
+              mkdir -p /opt/data/home/.config/opencode
+              cp /opt/config-defaults/opencode/opencode.json /opt/data/home/.config/opencode/opencode.json
+            fi
         command:
           - /bin/sh
           - -ec
-        image: ghcr.io/jregeimbal/hermes-agent-jregeimbal-homelab:v2026.6.19-34c59c3
+        image: ghcr.io/jregeimbal/hermes-agent-jregeimbal-homelab:v2026.7.7.2-bc2a185
         imagePullPolicy: IfNotPresent
-        name: fix-data-ownership
+        name: bootstrap-home-config
         securityContext:
           allowPrivilegeEscalation: false
           readOnlyRootFilesystem: true
+          runAsNonRoot: false
           runAsUser: 0
           runAsGroup: 0
           seccompProfile:
@@ -212,31 +235,54 @@ spec:
             name: data
           - mountPath: /tmp
             name: tmp
+      - args:
+          - |
+            set -eu
+            chown -R 10000:10000 /opt/data
+            chown 10000:10000 /mnt/run
+        command:
+          - /bin/sh
+          - -ec
+        image: ghcr.io/jregeimbal/hermes-agent-jregeimbal-homelab:v2026.7.7.2-bc2a185
+        imagePullPolicy: IfNotPresent
+        name: fix-data-ownership
+        securityContext:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
+          runAsNonRoot: false
+          runAsUser: 0
+          runAsGroup: 0
+          seccompProfile:
+            type: RuntimeDefault
+        volumeMounts:
+          - mountPath: /opt/data
+            name: data
+          - mountPath: /tmp
+            name: tmp
+          - mountPath: /mnt/run
+            name: run-tmp
     extraVolumeMounts:
       - mountPath: /run
         name: run-tmp
     image:
       repository: ghcr.io/jregeimbal/hermes-agent-jregeimbal-homelab
-      tag: "v2026.6.19-34c59c3"
+      tag: "v2026.7.7.2-bc2a185"
       pullPolicy: IfNotPresent
     podSecurityContext:
-      fsGroup: 0
+      fsGroup: 10000
       fsGroupChangePolicy: OnRootMismatch
-      runAsGroup: 0
-      runAsNonRoot: false
-      runAsUser: 0
       seccompProfile:
         type: RuntimeDefault
     securityContext:
       allowPrivilegeEscalation: false
       readOnlyRootFilesystem: true
-      runAsUser: 0
-      runAsGroup: 0
+      runAsUser: 10000
+      runAsGroup: 10000
       seccompProfile:
         type: RuntimeDefault
     persistence:
       enabled: true
-      size: 5Gi
+      size: 30Gi
       storageClass: longhorn
     extraVolumes:
       - name: run-tmp
@@ -264,14 +310,3 @@ spec:
     cleanupOnFail: true
     remediation:
       retries: 3
-  postRenderers:
-    - kustomize:
-        patches:
-          - target:
-              group: apps
-              version: v1
-              kind: Deployment
-              name: hermes-hermes-agent
-            patch: |
-              - op: remove
-                path: /spec/template/spec/containers/0/securityContext/capabilities

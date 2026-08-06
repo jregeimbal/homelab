@@ -4,10 +4,16 @@ name: Docker Build
 on:
   push:
     branches: [main]
-    paths: [Dockerfile]
+    paths:
+      - Dockerfile
+      - requirements.txt
+      - assets/**
   pull_request:
     branches: [main]
-    paths: [Dockerfile]
+    paths:
+      - Dockerfile
+      - requirements.txt
+      - assets/**
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -138,6 +144,12 @@ jobs:
             ${{ env.REGISTRY }}/${{ env.OWNER }}/${{ env.IMAGE_NAME }}:${{ needs.build-push.outputs.version }}-${{ needs.build-push.outputs.sha }} \
             gh --version
 
+      - name: Verify opencode
+        run: |
+          docker run --rm \
+            ${{ env.REGISTRY }}/${{ env.OWNER }}/${{ env.IMAGE_NAME }}:${{ needs.build-push.outputs.version }}-${{ needs.build-push.outputs.sha }} \
+            opencode --help 2>&1 | head -5
+
   bump-version:
     name: Bump Image Version
     runs-on: ubuntu-latest
@@ -194,5 +206,5 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add flux/apps/hermes-jon.yaml flux/apps/hermes-ana.yaml
-          git commit -m "chore: bump hermes image to ${VERSION}" || echo "No changes to commit"
+          git commit -m "chore: bump hermes image to ${VERSION}-${{ steps.git_sha.outputs.sha }}" || echo "No changes to commit"
           git push --force-with-lease 2>&1 || { echo "Git push failed - check for conflicts"; exit 1; }
