@@ -38,9 +38,10 @@ spec:
           interim_assistant_messages: true
           tool_progress: all
         model:
-          base_url: http://jonathans-mac-studio:1234/v1
-          default: qwen/qwen3.6-35b-a3b
+          base_url: http://jonathans-mac-studio:8000/v1
+          default: mtplx-qwen38-27b-optimized-quality
           provider: custom
+          api_key: "superduper"
         security:
           approval_mode: "smart"
           redact_secrets: true
@@ -94,7 +95,7 @@ spec:
           - xurl
     env:
       ANTHROPIC_AUTH_TOKEN: lmstudio
-      ANTHROPIC_BASE_URL: http://jonathans-mac-studio:1234
+      ANTHROPIC_BASE_URL: http://jonathans-mac-studio:8000
       CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC: '1'
       BROWSER_CDP_URL: ws://127.0.0.1:3000/
       DISCORD_ALLOWED_USERS: "808110923713216522"

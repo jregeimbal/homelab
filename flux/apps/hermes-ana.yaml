@@ -37,9 +37,10 @@ spec:
           interim_assistant_messages: true
           tool_progress: all
         model:
-          base_url: http://jonathans-mac-studio:1234/v1
-          default: qwen/qwen3.6-35b-a3b
-          provider: auto
+          base_url: http://jonathans-mac-studio:8000/v1
+          default: mtplx-qwen38-27b-optimized-quality
+          provider: custom
+          api_key: "superduper"
         security:
           redact_secrets: true
           tirith_enabled: true
