@@ -37,9 +37,10 @@ spec:
           interim_assistant_messages: true
           tool_progress: all
         model:
-          base_url: http://jonathans-mac-studio:1234/v1
-          default: qwen/qwen3.6-35b-a3b
-          provider: auto
+          base_url: http://jonathans-mac-studio:8000/v1
+          default: mtplx-qwen38-27b-optimized-quality
+          provider: custom
+          api_key: "superduper"
         security:
           redact_secrets: true
           tirith_enabled: true
@@ -94,7 +95,7 @@ spec:
         command:
           - /bin/sh
           - -ec
-        image: ghcr.io/jregeimbal/hermes-agent-jregeimbal-homelab:v2026.7.7.2-bc2a185
+        image: ghcr.io/jregeimbal/hermes-agent-jregeimbal-homelab:v2026.7.30-208c494
         imagePullPolicy: IfNotPresent
         name: fix-data-ownership
         securityContext:
@@ -126,7 +127,7 @@ spec:
     fullnameOverride: hermes-ana
     image:
       repository: ghcr.io/jregeimbal/hermes-agent-jregeimbal-homelab
-      tag: "v2026.7.7.2-bc2a185"
+      tag: "v2026.7.30-208c494"
       pullPolicy: IfNotPresent
     podSecurityContext:
       fsGroup: 10000

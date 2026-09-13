@@ -38,9 +38,10 @@ spec:
           interim_assistant_messages: true
           tool_progress: all
         model:
-          base_url: http://jonathans-mac-studio:1234/v1
-          default: qwen/qwen3.6-35b-a3b
+          base_url: http://jonathans-mac-studio:8000/v1
+          default: mtplx-qwen38-27b-optimized-quality
           provider: custom
+          api_key: "superduper"
         security:
           approval_mode: "smart"
           redact_secrets: true
@@ -94,7 +95,7 @@ spec:
           - xurl
     env:
       ANTHROPIC_AUTH_TOKEN: lmstudio
-      ANTHROPIC_BASE_URL: http://jonathans-mac-studio:1234
+      ANTHROPIC_BASE_URL: http://jonathans-mac-studio:8000
       CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC: '1'
       BROWSER_CDP_URL: ws://127.0.0.1:3000/
       DISCORD_ALLOWED_USERS: "808110923713216522"
@@ -132,7 +133,7 @@ spec:
           seccompProfile:
             type: RuntimeDefault
       - name: hermes-desktop
-        image: ghcr.io/jregeimbal/hermes-agent-jregeimbal-homelab:v2026.7.7.2-bc2a185
+        image: ghcr.io/jregeimbal/hermes-agent-jregeimbal-homelab:v2026.7.30-208c494
         imagePullPolicy: IfNotPresent
         command:
           - hermes
@@ -186,7 +187,7 @@ spec:
         command:
           - /bin/sh
           - -ec
-        image: ghcr.io/jregeimbal/hermes-agent-jregeimbal-homelab:v2026.7.7.2-bc2a185
+        image: ghcr.io/jregeimbal/hermes-agent-jregeimbal-homelab:v2026.7.30-208c494
         imagePullPolicy: IfNotPresent
         name: copy-hermes-source
         securityContext:
@@ -219,7 +220,7 @@ spec:
         command:
           - /bin/sh
           - -ec
-        image: ghcr.io/jregeimbal/hermes-agent-jregeimbal-homelab:v2026.7.7.2-bc2a185
+        image: ghcr.io/jregeimbal/hermes-agent-jregeimbal-homelab:v2026.7.30-208c494
         imagePullPolicy: IfNotPresent
         name: bootstrap-home-config
         securityContext:
@@ -243,7 +244,7 @@ spec:
         command:
           - /bin/sh
           - -ec
-        image: ghcr.io/jregeimbal/hermes-agent-jregeimbal-homelab:v2026.7.7.2-bc2a185
+        image: ghcr.io/jregeimbal/hermes-agent-jregeimbal-homelab:v2026.7.30-208c494
         imagePullPolicy: IfNotPresent
         name: fix-data-ownership
         securityContext:
@@ -266,7 +267,7 @@ spec:
         name: run-tmp
     image:
       repository: ghcr.io/jregeimbal/hermes-agent-jregeimbal-homelab
-      tag: "v2026.7.7.2-bc2a185"
+      tag: "v2026.7.30-208c494"
       pullPolicy: IfNotPresent
     podSecurityContext:
       fsGroup: 10000
