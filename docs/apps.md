@@ -96,6 +96,7 @@ All other components match the jon-agent configuration:
 
 - **WhatsApp only** — no Telegram or Discord integration
 - **New WhatsApp identity** — brand-new number/session, not jon-agent's; linked via QR scan on first boot (no static token, session lives on the PVC)
+- **WhatsApp mode: `bot`** (vs `self-chat` for jon) — open to any sender (`WHATSAPP_ALLOWED_USERS=*`), group chats allowed (`WHATSAPP_GROUP_POLICY=open`), read receipts disabled
 - **SealedSecret:** `hermes-wander-secrets` (API server key, dashboard session token, Firecrawl key)
 - **WhatsApp reply prefix:** `"🤖 *Wander Agent*\n──────\n"`
 - **No Context7 MCP server or GitHub token passthrough** — not relevant to travel planning
@@ -107,9 +108,9 @@ Otherwise mirrors jon-agent: browser automation, desktop dashboard container, ST
 
 ### Setup Required Before Deploy
 
-- `WHATSAPP_ALLOWED_USERS` (in `hermes-wander.yaml`, not a secret) is a placeholder — set it to the phone number for Wander Agent's new WhatsApp account before deploying
+Nothing outstanding — `API_SERVER_KEY` and `HERMES_DASHBOARD_SESSION_TOKEN` are self-generated and sealed already, and `FIRECRAWL_API_KEY` reuses the same Firecrawl key as jon-agent (pulled from the live `hermes-jon-secrets` and re-sealed for this namespace). On first boot, scan the WhatsApp QR code from the pod logs to link the new number.
 
-`API_SERVER_KEY` and `HERMES_DASHBOARD_SESSION_TOKEN` are self-generated and sealed already. `FIRECRAWL_API_KEY` reuses the same Firecrawl key as jon-agent (pulled from the live `hermes-jon-secrets` and re-sealed for this namespace) — no further action needed.
+**Note:** unlike jon-agent's allowlisted `self-chat` mode, Wander Agent runs in open `bot` mode (`WHATSAPP_ALLOWED_USERS=*`, `WHATSAPP_GROUP_POLICY=open`) — anyone who has or finds the linked number can message it, including in group chats.
 
 ---
 

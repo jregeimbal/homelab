@@ -55,6 +55,7 @@ spec:
           timeout: 180
         whatsapp:
           reply_prefix: "\U0001F916 *Wander Agent*\n──────\n"
+          send_read_receipts: false
         web:
           backend: firecrawl
       skills:
@@ -94,9 +95,10 @@ spec:
       HERMES_GATEWAY_PLATFORM_CONNECT_TIMEOUT: "90"
       PATH: /root/.local/bin:/opt/hermes/.venv/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
       PYTHONPATH: /opt/data/py-global
-      WHATSAPP_ALLOWED_USERS: "REPLACE_ME_WHATSAPP_NUMBER"
+      WHATSAPP_ALLOWED_USERS: "*"
       WHATSAPP_ENABLED: "true"
-      WHATSAPP_MODE: self-chat
+      WHATSAPP_GROUP_POLICY: open
+      WHATSAPP_MODE: bot
     extraContainers:
       - image: ghcr.io/browserless/chromium:latest
         imagePullPolicy: Always
