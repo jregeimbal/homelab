@@ -1,0 +1,301 @@
+---
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: hermes-wander
+  namespace: wander-agent
+spec:
+  interval: 5m
+  chart:
+    spec:
+      chart: .
+      version: "0.1.0"
+      sourceRef:
+        kind: GitRepository
+        name: hermes-agent
+        namespace: flux-system
+      interval: 5m
+  releaseName: hermes-wander
+  targetNamespace: wander-agent
+  values:
+    apiServer:
+      enabled: true
+    secrets:
+      existingSecret: hermes-wander-secrets
+    config:
+      values:
+        agent:
+          gateway_timeout: 1800
+          max_turns: 500
+          restart_drain_timeout: 60
+          tool_use_enforcement: true
+        browser:
+          allow_private_urls: false
+          command_timeout: 60
+          inactivity_timeout: 120
+          cdp_url: ws://127.0.0.1:3000/
+        display:
+          interim_assistant_messages: true
+          tool_progress: all
+        model:
+          base_url: http://jonathans-mac-studio:8000/v1
+          default: mtplx-qwen38-27b-optimized-quality
+          provider: custom
+          api_key: "superduper"
+        security:
+          approval_mode: "smart"
+          redact_secrets: true
+          tirith_enabled: true
+          tirith_fail_open: true
+        stt:
+          enabled: true
+        terminal:
+          backend: local
+          cwd: .
+          timeout: 180
+        whatsapp:
+          reply_prefix: "\U0001F916 *Wander Agent*\n──────\n"
+        web:
+          backend: firecrawl
+      skills:
+        disabled:
+          - yuanbao
+          - codex
+          - kanban-codex-lane
+          - baoyu-article-illustrator
+          - baoyu-comic
+          - baoyu-infographic
+          - comfyui
+          - p5js
+          - pixel-art
+          - touchdesigner-mcp
+          - jupyter-live-kernel
+          - himalaya
+          - minecraft-modpack-server
+          - pokemon-player
+          - spotify
+          - youtube-content
+          - audiocraft-audio-generation
+          - segment-anything-model
+          - serving-llms-vllm
+          - airtable
+          - notion
+          - powerpoint
+          - teams-meeting-pipeline
+          - godmode
+          - openhue
+          - xurl
+    env:
+      ANTHROPIC_AUTH_TOKEN: lmstudio
+      ANTHROPIC_BASE_URL: http://jonathans-mac-studio:8000
+      CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC: '1'
+      BROWSER_CDP_URL: ws://127.0.0.1:3000/
+      GATEWAY_ALLOW_ALL_USERS: "false"
+      HERMES_GATEWAY_PLATFORM_CONNECT_TIMEOUT: "90"
+      PATH: /root/.local/bin:/opt/hermes/.venv/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+      PYTHONPATH: /opt/data/py-global
+      WHATSAPP_ALLOWED_USERS: "REPLACE_ME_WHATSAPP_NUMBER"
+      WHATSAPP_ENABLED: "true"
+      WHATSAPP_MODE: self-chat
+    extraContainers:
+      - image: ghcr.io/browserless/chromium:latest
+        imagePullPolicy: Always
+        name: browserless-chromium
+        ports:
+          - containerPort: 3000
+            name: cdp
+            protocol: TCP
+          - containerPort: 8080
+            name: http
+            protocol: TCP
+        resources:
+          limits:
+            cpu: "2"
+            memory: 4Gi
+          requests:
+            cpu: 500m
+            memory: 2Gi
+        securityContext:
+          allowPrivilegeEscalation: false
+          seccompProfile:
+            type: RuntimeDefault
+      - name: hermes-desktop
+        image: ghcr.io/jregeimbal/hermes-agent-jregeimbal-homelab:v2026.7.30-208c494
+        imagePullPolicy: IfNotPresent
+        command:
+          - hermes
+          - dashboard
+          - --host
+          - "0.0.0.0"
+          - --port
+          - "9119"
+          - --insecure
+          - --no-open
+        ports:
+          - containerPort: 9119
+            name: desktop
+            protocol: TCP
+        env:
+          - name: PATH
+            value: /root/.local/bin:/opt/hermes/.venv/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+          - name: HERMES_HOME
+            value: /opt/data
+          - name: HERMES_DASHBOARD_SESSION_TOKEN
+            valueFrom:
+              secretKeyRef:
+                name: hermes-wander-secrets
+                key: HERMES_DASHBOARD_SESSION_TOKEN
+        resources:
+          limits:
+            cpu: "500m"
+            memory: 512Mi
+          requests:
+            cpu: 100m
+            memory: 128Mi
+        securityContext:
+          allowPrivilegeEscalation: false
+          runAsUser: 10000
+          runAsGroup: 10000
+          seccompProfile:
+            type: RuntimeDefault
+        volumeMounts:
+          - mountPath: /opt/data
+            name: data
+          - name: hermes-agent-source
+            mountPath: /opt/hermes
+            readOnly: true
+    extraInitContainers:
+      - args:
+          - |
+            set -eu
+            rm -rf /shared-hermes-agent/*
+            cp -a /opt/hermes/. /shared-hermes-agent/
+            chown -R 1024:1024 /shared-hermes-agent
+        command:
+          - /bin/sh
+          - -ec
+        image: ghcr.io/jregeimbal/hermes-agent-jregeimbal-homelab:v2026.7.30-208c494
+        imagePullPolicy: IfNotPresent
+        name: copy-hermes-source
+        securityContext:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
+          runAsNonRoot: false
+          runAsUser: 0
+          runAsGroup: 0
+          seccompProfile:
+            type: RuntimeDefault
+        volumeMounts:
+          - mountPath: /shared-hermes-agent
+            name: hermes-agent-source
+          - mountPath: /tmp
+            name: tmp
+      - args:
+          - |
+            set -eu
+            if [ ! -f /opt/data/home/.gitconfig ]; then
+              cp /opt/config-defaults/git/gitconfig /opt/data/home/.gitconfig
+            fi
+            if [ ! -f /opt/data/home/.claude/settings.json ]; then
+              mkdir -p /opt/data/home/.claude
+              cp /opt/config-defaults/claude/settings.json /opt/data/home/.claude/settings.json
+            fi
+            if [ ! -f /opt/data/home/.config/opencode/opencode.json ]; then
+              mkdir -p /opt/data/home/.config/opencode
+              cp /opt/config-defaults/opencode/opencode.json /opt/data/home/.config/opencode/opencode.json
+            fi
+        command:
+          - /bin/sh
+          - -ec
+        image: ghcr.io/jregeimbal/hermes-agent-jregeimbal-homelab:v2026.7.30-208c494
+        imagePullPolicy: IfNotPresent
+        name: bootstrap-home-config
+        securityContext:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
+          runAsNonRoot: false
+          runAsUser: 0
+          runAsGroup: 0
+          seccompProfile:
+            type: RuntimeDefault
+        volumeMounts:
+          - mountPath: /opt/data
+            name: data
+          - mountPath: /tmp
+            name: tmp
+      - args:
+          - |
+            set -eu
+            chown -R 10000:10000 /opt/data
+            chown 10000:10000 /mnt/run
+        command:
+          - /bin/sh
+          - -ec
+        image: ghcr.io/jregeimbal/hermes-agent-jregeimbal-homelab:v2026.7.30-208c494
+        imagePullPolicy: IfNotPresent
+        name: fix-data-ownership
+        securityContext:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
+          runAsNonRoot: false
+          runAsUser: 0
+          runAsGroup: 0
+          seccompProfile:
+            type: RuntimeDefault
+        volumeMounts:
+          - mountPath: /opt/data
+            name: data
+          - mountPath: /tmp
+            name: tmp
+          - mountPath: /mnt/run
+            name: run-tmp
+    extraVolumeMounts:
+      - mountPath: /run
+        name: run-tmp
+    fullnameOverride: hermes-wander
+    image:
+      repository: ghcr.io/jregeimbal/hermes-agent-jregeimbal-homelab
+      tag: "v2026.7.30-208c494"
+      pullPolicy: IfNotPresent
+    podSecurityContext:
+      fsGroup: 10000
+      fsGroupChangePolicy: OnRootMismatch
+      seccompProfile:
+        type: RuntimeDefault
+    securityContext:
+      allowPrivilegeEscalation: false
+      readOnlyRootFilesystem: true
+      runAsUser: 10000
+      runAsGroup: 10000
+      seccompProfile:
+        type: RuntimeDefault
+    persistence:
+      enabled: true
+      size: 30Gi
+      storageClass: longhorn
+    extraVolumes:
+      - name: run-tmp
+        emptyDir: {}
+      - name: hermes-agent-source
+        emptyDir: {}
+    service:
+      enabled: true
+      ports:
+        - containerPort: 8642
+          name: api-server
+          port: 8642
+          protocol: TCP
+          targetPort: 8642
+        - containerPort: 9119
+          name: desktop
+          port: 9119
+          protocol: TCP
+          targetPort: 9119
+  timeout: 15m
+  install:
+    remediation:
+      retries: 3
+  upgrade:
+    cleanupOnFail: true
+    remediation:
+      retries: 3

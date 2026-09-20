@@ -85,6 +85,36 @@ All other components match the jon-agent configuration:
 
 ---
 
+## Hermes Agent — Wander Agent (wander-agent namespace)
+
+**HelmRelease:** `hermes-wander` in `wander-agent` namespace
+**Chart source:** GitRepository `hermes-agent` (github.com/ultraworkers/hermes-agent-helm-chart)
+**Data volume:** 30Gi Longhorn
+**Purpose:** Jon's personal travel-planning agent (flight/hotel research, itineraries, trip logistics)
+
+### Key Differences from jon-agent
+
+- **WhatsApp only** — no Telegram or Discord integration
+- **New WhatsApp identity** — brand-new number/session, not jon-agent's; linked via QR scan on first boot (no static token, session lives on the PVC)
+- **SealedSecret:** `hermes-wander-secrets` (API server key, dashboard session token, Firecrawl key)
+- **WhatsApp reply prefix:** `"🤖 *Wander Agent*\n──────\n"`
+- **No Context7 MCP server or GitHub token passthrough** — not relevant to travel planning
+- **fullnameOverride:** `hermes-wander` (vs default `hermes` for jon)
+
+### Shared Components
+
+Otherwise mirrors jon-agent: browser automation, desktop dashboard container, STT, same disabled-skills list, same local model endpoint, same security/Tirith settings.
+
+### Setup Required Before Deploy
+
+Two secret values are committed as placeholders in `hermes-wander-secrets.sealedsecret.yaml` and must be re-sealed with real values before this HelmRelease will work correctly:
+- `FIRECRAWL_API_KEY` — sign up at firecrawl.dev, then reseal
+- `WHATSAPP_ALLOWED_USERS` (in `hermes-wander.yaml`, not a secret) — set to the phone number for Wander Agent's new WhatsApp account
+
+`API_SERVER_KEY` and `HERMES_DASHBOARD_SESSION_TOKEN` were generated and sealed already (self-generated, no external signup needed).
+
+---
+
 ## Open WebUI (open-webui namespace)
 
 **HelmRelease:** `open-webui` in `open-webui` namespace  
@@ -149,6 +179,7 @@ Custom node dashboard available at `assets/grafana-dashboards/nodes.json`.
 |------------|-------------|-------------|------------|---------------|
 | Hermes (jon) | jon-agent  | 5Gi Longhorn| ClusterIP  | from git      |
 | Hermes (ana) | ana-agent  | 5Gi Longhorn| ClusterIP  | from git      |
+| Hermes (wander) | wander-agent | 30Gi Longhorn| ClusterIP  | from git   |
 | Open WebUI | open-webui  | 10Gi Longhorn| Tailscale LB | 14.6.0      |
 | Prometheus | monitoring  | 5Gi Longhorn| ClusterIP  | 29.8.0        |
 | Grafana    | monitoring  | 5Gi Longhorn| Tailscale LB | 10.5.15     |

@@ -4,8 +4,11 @@ resources:
   - hermes-jon.yaml
   - hermes-jon-tailscale.yaml
   - hermes-ana.yaml
+  - hermes-wander.yaml
+  - hermes-wander-tailscale.yaml
   - open-webui.yaml
   - open-webui-secret.sealedsecret.yaml
   - hermes-jon-secrets.sealedsecret.yaml
   - hermes-ana-secrets.sealedsecret.yaml
+  - hermes-wander-secrets.sealedsecret.yaml
   - monitoring.yaml
