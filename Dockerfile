@@ -28,7 +28,18 @@ RUN ARCH=$(dpkg --print-architecture) && \
 
 COPY assets/claude-settings.json /opt/config-defaults/claude/settings.json
 COPY assets/gitconfig /opt/config-defaults/git/gitconfig
-RUN npm install -g @anthropic-ai/claude-code @the-open-engine/zeroshot && \
+# Workaround: zeroshot pins better-sqlite3@^12.6.2, whose native addon doesn't
+# build against hermes-agent's bundled Node 26 (v8::PropertyCallbackInfo lost
+# ::This()), which fails npm's normal install before we ever get a chance to
+# swap it. Install zeroshot with scripts skipped so the broken build never
+# runs, force a Node 26-compatible better-sqlite3 in its place, then rebuild
+# zeroshot's other native deps (node-pty, puppeteer) that got skipped too.
+# Drop this once zeroshot bumps its own better-sqlite3 pin upstream.
+RUN npm install -g @anthropic-ai/claude-code && \
+    npm install -g --ignore-scripts @the-open-engine/zeroshot && \
+    (cd /usr/local/lib/node_modules/@the-open-engine/zeroshot && \
+        npm install better-sqlite3@^12.11.1 --no-save && \
+        npm rebuild node-pty puppeteer) && \
     npm cache clean --force && \
     claude --version && \
     zeroshot --version
