@@ -101,6 +101,7 @@ All other components match the jon-agent configuration:
 - **WhatsApp reply prefix:** `"🤖 *Wander Agent*\n──────\n"`
 - **No Context7 MCP server or GitHub token passthrough** — not relevant to travel planning
 - **fullnameOverride:** `hermes-wander` (vs default `hermes` for jon)
+- **Dashboard basic auth configured explicitly** (`config.values.dashboard.basic_auth` in `hermes-wander.yaml`) — as of a June 2026 image hardening, `hermes dashboard --insecure` no longer bypasses auth on a `0.0.0.0` bind; jon-agent/ana-agent's dashboards work only because an auth provider was registered out-of-band on their (older) persistent volumes. A brand-new PVC has none, so this had to be set explicitly or `hermes-desktop` crash-loops. The password hash is committed; the plaintext password was shared with Jon directly, not stored in the repo
 
 ### Shared Components
 
