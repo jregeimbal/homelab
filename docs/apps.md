@@ -107,11 +107,9 @@ Otherwise mirrors jon-agent: browser automation, desktop dashboard container, ST
 
 ### Setup Required Before Deploy
 
-Two secret values are committed as placeholders in `hermes-wander-secrets.sealedsecret.yaml` and must be re-sealed with real values before this HelmRelease will work correctly:
-- `FIRECRAWL_API_KEY` — sign up at firecrawl.dev, then reseal
-- `WHATSAPP_ALLOWED_USERS` (in `hermes-wander.yaml`, not a secret) — set to the phone number for Wander Agent's new WhatsApp account
+- `WHATSAPP_ALLOWED_USERS` (in `hermes-wander.yaml`, not a secret) is a placeholder — set it to the phone number for Wander Agent's new WhatsApp account before deploying
 
-`API_SERVER_KEY` and `HERMES_DASHBOARD_SESSION_TOKEN` were generated and sealed already (self-generated, no external signup needed).
+`API_SERVER_KEY` and `HERMES_DASHBOARD_SESSION_TOKEN` are self-generated and sealed already. `FIRECRAWL_API_KEY` reuses the same Firecrawl key as jon-agent (pulled from the live `hermes-jon-secrets` and re-sealed for this namespace) — no further action needed.
 
 ---
 
