@@ -29,6 +29,10 @@ spec:
           max_turns: 500
           restart_drain_timeout: 60
           tool_use_enforcement: true
+        dashboard:
+          basic_auth:
+            username: wander
+            password_hash: "scrypt$16384$8$1$wYytzsSfpekApyXrzVUzlA==$qErS+QJd/nrwlTDq0dkq8LlYGd2Z0werkaEJ7aCeshU="
         browser:
           allow_private_urls: false
           command_timeout: 60
