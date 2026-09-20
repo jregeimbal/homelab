@@ -85,6 +85,35 @@ All other components match the jon-agent configuration:
 
 ---
 
+## Hermes Agent — Wander Agent (wander-agent namespace)
+
+**HelmRelease:** `hermes-wander` in `wander-agent` namespace
+**Chart source:** GitRepository `hermes-agent` (github.com/ultraworkers/hermes-agent-helm-chart)
+**Data volume:** 30Gi Longhorn
+**Purpose:** Jon's personal travel-planning agent (flight/hotel research, itineraries, trip logistics)
+
+### Key Differences from jon-agent
+
+- **WhatsApp only** — no Telegram or Discord integration
+- **New WhatsApp identity** — brand-new number/session, not jon-agent's; linked via QR scan on first boot (no static token, session lives on the PVC)
+- **WhatsApp mode: `bot`** (vs `self-chat` for jon) — open to any sender (`WHATSAPP_ALLOWED_USERS=*`), group chats allowed (`WHATSAPP_GROUP_POLICY=open`), read receipts enabled
+- **SealedSecret:** `hermes-wander-secrets` (API server key, dashboard session token, Firecrawl key)
+- **WhatsApp reply prefix:** `"🤖 *Wander Agent*\n──────\n"`
+- **No Context7 MCP server or GitHub token passthrough** — not relevant to travel planning
+- **fullnameOverride:** `hermes-wander` (vs default `hermes` for jon)
+
+### Shared Components
+
+Otherwise mirrors jon-agent: browser automation, desktop dashboard container, STT, same disabled-skills list, same local model endpoint, same security/Tirith settings.
+
+### Setup Required Before Deploy
+
+Nothing outstanding — `API_SERVER_KEY` and `HERMES_DASHBOARD_SESSION_TOKEN` are self-generated and sealed already, and `FIRECRAWL_API_KEY` reuses the same Firecrawl key as jon-agent (pulled from the live `hermes-jon-secrets` and re-sealed for this namespace). On first boot, scan the WhatsApp QR code from the pod logs to link the new number.
+
+**Note:** unlike jon-agent's allowlisted `self-chat` mode, Wander Agent runs in open `bot` mode (`WHATSAPP_ALLOWED_USERS=*`, `WHATSAPP_GROUP_POLICY=open`) — anyone who has or finds the linked number can message it, including in group chats.
+
+---
+
 ## Open WebUI (open-webui namespace)
 
 **HelmRelease:** `open-webui` in `open-webui` namespace  
@@ -149,6 +178,7 @@ Custom node dashboard available at `assets/grafana-dashboards/nodes.json`.
 |------------|-------------|-------------|------------|---------------|
 | Hermes (jon) | jon-agent  | 5Gi Longhorn| ClusterIP  | from git      |
 | Hermes (ana) | ana-agent  | 5Gi Longhorn| ClusterIP  | from git      |
+| Hermes (wander) | wander-agent | 30Gi Longhorn| ClusterIP  | from git   |
 | Open WebUI | open-webui  | 10Gi Longhorn| Tailscale LB | 14.6.0      |
 | Prometheus | monitoring  | 5Gi Longhorn| ClusterIP  | 29.8.0        |
 | Grafana    | monitoring  | 5Gi Longhorn| Tailscale LB | 10.5.15     |

@@ -22,6 +22,11 @@ metadata:
 apiVersion: v1
 kind: Namespace
 metadata:
+  name: wander-agent
+---
+apiVersion: v1
+kind: Namespace
+metadata:
   name: longhorn-system
 ---
 apiVersion: v1

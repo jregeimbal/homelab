@@ -34,6 +34,7 @@ graph TB
     subgraph "Applications"
         HERMES_J[Hermes Agent<br/>jon-agent]
         HERMES_A[Hermes Agent<br/>ana-agent]
+        HERMES_W[Hermes Agent<br/>wander-agent]
         OW[Open WebUI<br/>open-webui]
         PROM[Prometheus<br/>monitoring]
         GRAF[Grafana<br/>monitoring]
@@ -73,6 +74,8 @@ graph TB
     HERMES_A --> TG
     HERMES_A --> DC
     HERMES_A --> MODEL
+    HERMES_W --> WA
+    HERMES_W --> MODEL
 
     OW --> HERMES_J
     GRAF --> PROM
@@ -116,6 +119,7 @@ GitOps-managed Kubernetes cluster with Tailscale for external access and Longhor
 |------------|-------------|------------------------------------------------|----------------|
 | Hermes (jon) | jon-agent  | AI agent with WhatsApp/Telegram/Discord integrations | ClusterIP    |
 | Hermes (ana) | ana-agent  | AI agent (second instance)                     | ClusterIP      |
+| Hermes (wander) | wander-agent | Personal travel-planning agent, WhatsApp only | ClusterIP   |
 | Open WebUI | open-webui  | Web UI for LLM interaction, backed by Hermes   | Tailscale      |
 | Prometheus | monitoring  | Metrics collection and storage                 | ClusterIP      |
 | Grafana    | monitoring  | Metrics visualization dashboard                | Tailscale      |

@@ -206,9 +206,12 @@ flux/
     ├── monitoring.yaml         # Prometheus + Grafana
     ├── hermes-jon.yaml         # Hermes agent (jon)
     ├── hermes-ana.yaml         # Hermes agent (ana)
+    ├── hermes-wander.yaml      # Hermes agent (wander)
     ├── hermes-jon-secrets.sealedsecret.yaml
     ├── hermes-ana-secrets.sealedsecret.yaml
+    ├── hermes-wander-secrets.sealedsecret.yaml
     ├── hermes-jon-tailscale.yaml
+    ├── hermes-wander-tailscale.yaml
     ├── open-webui.yaml         # Open WebUI
     └── open-webui-secret.sealedsecret.yaml
 ```
