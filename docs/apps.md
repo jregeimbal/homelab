@@ -96,7 +96,7 @@ All other components match the jon-agent configuration:
 
 - **WhatsApp only** — no Telegram or Discord integration
 - **New WhatsApp identity** — brand-new number/session, not jon-agent's; linked via QR scan on first boot (no static token, session lives on the PVC)
-- **WhatsApp mode: `bot`** (vs `self-chat` for jon) — open to any sender (`WHATSAPP_ALLOWED_USERS=*`), group chats allowed (`WHATSAPP_GROUP_POLICY=open`), read receipts disabled
+- **WhatsApp mode: `bot`** (vs `self-chat` for jon) — open to any sender (`WHATSAPP_ALLOWED_USERS=*`), group chats allowed (`WHATSAPP_GROUP_POLICY=open`), read receipts enabled
 - **SealedSecret:** `hermes-wander-secrets` (API server key, dashboard session token, Firecrawl key)
 - **WhatsApp reply prefix:** `"🤖 *Wander Agent*\n──────\n"`
 - **No Context7 MCP server or GitHub token passthrough** — not relevant to travel planning

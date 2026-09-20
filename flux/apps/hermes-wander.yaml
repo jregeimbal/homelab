@@ -55,7 +55,7 @@ spec:
           timeout: 180
         whatsapp:
           reply_prefix: "\U0001F916 *Wander Agent*\n──────\n"
-          send_read_receipts: false
+          send_read_receipts: true
         web:
           backend: firecrawl
       skills:
