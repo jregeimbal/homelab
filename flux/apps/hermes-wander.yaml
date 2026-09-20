@@ -95,6 +95,7 @@ spec:
       HERMES_GATEWAY_PLATFORM_CONNECT_TIMEOUT: "90"
       PATH: /root/.local/bin:/opt/hermes/.venv/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
       PYTHONPATH: /opt/data/py-global
+      WHATSAPP_ALLOW_ALL_USERS: "true"
       WHATSAPP_ALLOWED_USERS: "*"
       WHATSAPP_ENABLED: "true"
       WHATSAPP_GROUP_POLICY: open
@@ -122,7 +123,7 @@ spec:
           seccompProfile:
             type: RuntimeDefault
       - name: hermes-desktop
-        image: ghcr.io/jregeimbal/hermes-agent-jregeimbal-homelab:v2026.7.30-208c494
+        image: ghcr.io/jregeimbal/hermes-agent-jregeimbal-homelab:v2026.9.11-f593bc0
         imagePullPolicy: IfNotPresent
         command:
           - hermes
@@ -176,7 +177,7 @@ spec:
         command:
           - /bin/sh
           - -ec
-        image: ghcr.io/jregeimbal/hermes-agent-jregeimbal-homelab:v2026.7.30-208c494
+        image: ghcr.io/jregeimbal/hermes-agent-jregeimbal-homelab:v2026.9.11-f593bc0
         imagePullPolicy: IfNotPresent
         name: copy-hermes-source
         securityContext:
@@ -209,7 +210,7 @@ spec:
         command:
           - /bin/sh
           - -ec
-        image: ghcr.io/jregeimbal/hermes-agent-jregeimbal-homelab:v2026.7.30-208c494
+        image: ghcr.io/jregeimbal/hermes-agent-jregeimbal-homelab:v2026.9.11-f593bc0
         imagePullPolicy: IfNotPresent
         name: bootstrap-home-config
         securityContext:
@@ -233,7 +234,7 @@ spec:
         command:
           - /bin/sh
           - -ec
-        image: ghcr.io/jregeimbal/hermes-agent-jregeimbal-homelab:v2026.7.30-208c494
+        image: ghcr.io/jregeimbal/hermes-agent-jregeimbal-homelab:v2026.9.11-f593bc0
         imagePullPolicy: IfNotPresent
         name: fix-data-ownership
         securityContext:
@@ -257,7 +258,7 @@ spec:
     fullnameOverride: hermes-wander
     image:
       repository: ghcr.io/jregeimbal/hermes-agent-jregeimbal-homelab
-      tag: "v2026.7.30-208c494"
+      tag: "v2026.9.11-f593bc0"
       pullPolicy: IfNotPresent
     podSecurityContext:
       fsGroup: 10000
