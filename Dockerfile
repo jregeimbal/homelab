@@ -1,4 +1,4 @@
-FROM nousresearch/hermes-agent:v2026.9.11
+FROM nousresearch/hermes-agent:v2026.9.24
 
 ENV PYTHONPATH=/opt/data/py-global
 
