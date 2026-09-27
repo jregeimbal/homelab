@@ -1,6 +1,11 @@
+# NB: do NOT add hermes-agent back here. The base image already provides it as an
+# editable install in /opt/hermes/.venv, and the 0.21.x editable finder registers
+# AFTER PathFinder in sys.meta_path -- so a copy of hermes-agent in this --target
+# dir (on the /opt/data PVC, which outlives image upgrades) shadows the venv copy
+# at runtime and silently downgrades the whole agent. See 2026-09-28 incident:
+# stale 0.16.0 tree in /opt/data/py-global kept `hermes --version` reporting 0.16.0.
 discord.py
 python-telegram-bot
 faster-whisper
 python-dotenv
 firecrawl-py==4.17.0
-hermes-agent[all]
