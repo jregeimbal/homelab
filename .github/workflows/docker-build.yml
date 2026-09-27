@@ -110,7 +110,8 @@ jobs:
           kubeconform -summary -ignore-missing-schemas \
             -schema-location "https://raw.githubusercontent.com/datreeio/CRDs-catalog/main/" \
             flux/apps/hermes-jon.yaml \
-            flux/apps/hermes-ana.yaml
+            flux/apps/hermes-ana.yaml \
+            flux/apps/hermes-wander.yaml
 
   validate-image:
     name: Validate Docker Image
@@ -200,12 +201,23 @@ jobs:
           sed -i "s|image: ${IMAGE_CURRENT}.*|image: ${IMAGE}|" flux/apps/hermes-ana.yaml
           sed -i "s|tag: .*|tag: \"${IMAGE#*:}\"|" flux/apps/hermes-ana.yaml
 
+      - name: Update hermes-wander.yaml
+        run: |
+          set -e
+          VERSION="${{ steps.version.outputs.version }}"
+          SHA="${{ steps.git_sha.outputs.sha }}"
+          IMAGE="${REGISTRY}/${OWNER}/${IMAGE_NAME}:${VERSION}-${SHA}"
+          IMAGE_CURRENT="ghcr.io/jregeimbal/hermes-agent-jregeimbal-homelab"
+          sed -i "s|repository: ${IMAGE_CURRENT}|repository: ${IMAGE%:*}|" flux/apps/hermes-wander.yaml
+          sed -i "s|image: ${IMAGE_CURRENT}.*|image: ${IMAGE}|" flux/apps/hermes-wander.yaml
+          sed -i "s|tag: .*|tag: \"${IMAGE#*:}\"|" flux/apps/hermes-wander.yaml
+
       - name: Commit and push manifest updates
         run: |
           set -eo pipefail
           VERSION="${{ steps.version.outputs.version }}"
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add flux/apps/hermes-jon.yaml flux/apps/hermes-ana.yaml
+          git add flux/apps/hermes-jon.yaml flux/apps/hermes-ana.yaml flux/apps/hermes-wander.yaml
           git commit -m "chore: bump hermes image to ${VERSION}-${{ steps.git_sha.outputs.sha }}" || echo "No changes to commit"
           git push --force-with-lease 2>&1 || { echo "Git push failed - check for conflicts"; exit 1; }
