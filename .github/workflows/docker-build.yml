@@ -77,7 +77,9 @@ jobs:
         with:
           context: .
           platforms: linux/amd64,linux/arm64
-          push: ${{ github.event_name == 'push' }}
+          # PR builds push the sha-only tag (version/latest/date tags stay
+          # push-only) so contract-tests can pull the image pre-merge.
+          push: ${{ github.event_name == 'push' || github.event_name == 'pull_request' }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha

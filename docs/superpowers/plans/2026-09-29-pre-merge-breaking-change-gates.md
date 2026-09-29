@@ -20,7 +20,7 @@
 - New Python code: stdlib + PyYAML only. Tests: pytest.
 - Both new jobs run on `pull_request` and `push` (pre-merge is the point). `contract-tests` needs `build-push`; `upstream-changelog` needs nothing (fully parallel).
 - The build is multi-arch (`platforms: linux/amd64,linux/arm64`), so the amd64 GitHub runner can pull and run the image built in the same run.
-- Built image ref: on push events `${REGISTRY}/${OWNER}/${IMAGE_NAME}:${{ needs.build-push.outputs.version }}-${{ needs.build-push.outputs.sha }}`; on `pull_request` the version tag is disabled, so use `${{ needs.build-push.outputs.sha }}` only.
+- Built image ref: on push events `${REGISTRY}/${OWNER}/${IMAGE_NAME}:${{ needs.build-push.outputs.version }}-${{ needs.build-push.outputs.sha }}`; on `pull_request` the version tag is disabled, so use `${{ needs.build-push.outputs.sha }}` only. This requires the pre-existing `build-push` job to actually push on `pull_request` too (its original `push:` guard was push-only, which would leave the sha-only ref absent on PRs) — the guard is extended to `pull_request` alongside Task 3 (sha tag only; `workflow_dispatch` behavior unchanged). Side effect: PR builds accumulate sha-only tags in GHCR (no automatic GC); noted in `docs/ci-gates.md`.
 - Upstream changelog breaking markers (case-insensitive regex): `BREAKING`, `removed`, `no longer`, `requires` — matched against commit messages and against patches of files whose path matches `*changelog*` (case-insensitive).
 - Total added CI wall time target: +2–4 min, parallel.
 
