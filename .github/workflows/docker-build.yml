@@ -295,3 +295,37 @@ jobs:
           git add flux/apps/hermes-jon.yaml flux/apps/hermes-ana.yaml flux/apps/hermes-wander.yaml
           git commit -m "chore: bump hermes image to ${VERSION}-${{ steps.git_sha.outputs.sha }}" || echo "No changes to commit"
           git push --force-with-lease 2>&1 || { echo "Git push failed - check for conflicts"; exit 1; }
+
+  upstream-changelog:
+    name: Upstream Changelog Diff
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Python deps
+        run: python3 -m pip install --quiet pyyaml
+
+      - name: Diff upstream base
+        run: |
+          python3 scripts/upstream-changelog.py \
+            --dockerfile Dockerfile \
+            --manifests flux/apps/hermes-jon.yaml flux/apps/hermes-ana.yaml flux/apps/hermes-wander.yaml \
+            --token "${GITHUB_TOKEN}" \
+            --out-json /tmp/changelog.json \
+            --out-comment-file /tmp/changelog-comment.md
+
+      - name: Post PR comment
+        if: github.event_name == 'pull_request' && always()
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          [ -s /tmp/changelog-comment.md ] || { echo "nothing to post"; exit 0; }
+          curl -sf -X POST \
+            "https://api.github.com/repos/${{ github.repository }}/issues/${{ github.event.pull_request.number }}/comments" \
+            -H "Authorization: Bearer ${GITHUB_TOKEN}" -H "Accept: application/vnd.github+json" \
+            -d "{\"body\": $(jq -Rs . /tmp/changelog-comment.md)}"

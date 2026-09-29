@@ -26,3 +26,15 @@ if os.path.exists(_SCRIPT):
         sys.modules[_name] = _mod
         _spec.loader.exec_module(_mod)
     setattr(scripts, "manifest_contract_test", sys.modules[_name])
+
+_SCRIPT_UC = os.path.join(ROOT, "scripts", "upstream-changelog.py")
+if os.path.exists(_SCRIPT_UC):
+    import scripts  # namespace package rooted at the repo root
+
+    _name_uc = "scripts.upstream_changelog"
+    if _name_uc not in sys.modules:
+        _spec_uc = importlib.util.spec_from_file_location(_name_uc, _SCRIPT_UC)
+        _mod_uc = importlib.util.module_from_spec(_spec_uc)
+        sys.modules[_name_uc] = _mod_uc
+        _spec_uc.loader.exec_module(_mod_uc)
+    setattr(scripts, "upstream_changelog", sys.modules[_name_uc])
