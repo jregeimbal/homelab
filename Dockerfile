@@ -1,4 +1,4 @@
-FROM nousresearch/hermes-agent:v2026.9.24
+FROM nousresearch/hermes-agent:v2026.9.21
 # CI: see docs/ci-gates.md for pre-merge gates
 
 ENV PYTHONPATH=/opt/data/py-global

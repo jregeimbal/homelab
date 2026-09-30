@@ -262,7 +262,7 @@ spec:
     fullnameOverride: hermes-wander
     image:
       repository: ghcr.io/jregeimbal/hermes-agent-jregeimbal-homelab
-      tag: "v2026.9.24-6e01c6c"
+      tag: "v2026.9.14-0000000"
       pullPolicy: IfNotPresent
     podSecurityContext:
       fsGroup: 10000
