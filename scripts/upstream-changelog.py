@@ -132,6 +132,8 @@ def fetch_compare(repo: str, old_tag: str, new_tag: str, token: str | None = Non
         raise RuntimeError(f"HTTP {e.code} from {url}: {body}") from None
     except urllib.error.URLError as e:
         raise RuntimeError(f"fetch failed for {url}: {e.reason}") from None
+    except (OSError, ValueError) as e:  # read timeout / reset mid-body, bad JSON
+        raise RuntimeError(f"fetch failed for {url}: {e}") from None
 
 
 def _changelog_files(payload: dict) -> list[dict]:

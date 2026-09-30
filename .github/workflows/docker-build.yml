@@ -112,7 +112,7 @@ jobs:
           if [ "${{ github.event_name }}" = "push" ]; then
             TAG="${{ needs.build-push.outputs.version }}-${{ needs.build-push.outputs.sha }}"
           else
-            TAG="${{ needs.build-push.outputs.sha }}"
+            TAG="sha-${{ needs.build-push.outputs.sha }}"  # metadata-action type=sha prefix
           fi
           echo "ref=${REF}${TAG}" >> "$GITHUB_OUTPUT"
           echo "base=$(grep '^FROM ' Dockerfile | awk '{print $2}')" >> "$GITHUB_OUTPUT"

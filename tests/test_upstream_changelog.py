@@ -42,6 +42,16 @@ def test_fetch_failure_exit_2(monkeypatch):
                   '--repo', 'nousresearch/hermes-agent'])
     assert rc == 2
 
+def test_fetch_compare_read_timeout_is_runtime_error(monkeypatch):
+    class SlowBody:
+        def __enter__(self): return self
+        def __exit__(self, *a): return False
+        def read(self): raise TimeoutError('The read operation timed out')
+    monkeypatch.setattr(uc.urllib.request, 'urlopen', lambda *a, **k: SlowBody())
+    import pytest
+    with pytest.raises(RuntimeError, match='timed out'):
+        uc.fetch_compare('nousresearch/hermes-agent', 'v1', 'v2')
+
 def test_render_comment_cap():
     p = {'ahead_by': 3, 'commits': [{'sha': f'c{i}', 'commit': {'message': 'm' * 500}} for i in range(3)],
          'files': [{'filename': 'CHANGELOG.md', 'patch': 'x' * 100000}]}

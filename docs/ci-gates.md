@@ -33,7 +33,7 @@ Read the posted PR comment. Judge each quoted breaking line:
 
 ## Housekeeping
 
-- **GHCR tag accumulation:** every build (push, PR, or manual dispatch) publishes the content-addressed `:<sha7>` tag so the gates can pull it; `version-sha`, date, and `latest` tags are push-to-main only. Sha tags accumulate and are never GC'd. To list/delete:
+- **GHCR tag accumulation:** every build (push, PR, or manual dispatch) publishes the content-addressed `:sha-<sha7>` tag so the gates can pull it; `version-sha`, date, and `latest` tags are push-to-main only. Sha tags accumulate and are never GC'd. To list/delete:
 
   ```bash
   # list container package ids (token needs read:packages)
