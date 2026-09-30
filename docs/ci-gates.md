@@ -48,7 +48,7 @@ Read the posted PR comment. Judge each quoted breaking line:
     "https://api.github.com/packages/container/<package-id>/versions/<version-id>"
   ```
 - **PR comments:** the changelog job posts one comment per PR event (a re-sync posts a fresh comment — no dedup). PRs that don't change the base get a "No upstream base change" comment.
-- **Known limitation:** the GitHub compare API truncates at 250 commits / 300 files, so a very large base bump may only have part of its history scanned (possible false negative). For multi-month base jumps, skim upstream release notes yourself.
+- **Known limitation:** the GitHub compare API truncates at 250 commits / 300 files, and upstream moves fast (~5,000 commits in one week, 2026-09-14 → 09-21), so in practice **most bumps are only partially scanned** (possible false negative). The comment flags this with a ⚠️ "only N of M commits" line; when you see it, skim the upstream release notes yourself.
 - **Manual dispatch:** `workflow_dispatch` runs the full pipeline including both gates (all builds push their sha tag).
 - **Fork PRs:** if you ever accept fork PRs, the build push fails at registry login (fork tokens can't write your packages), so the gates can't run for forks.
 

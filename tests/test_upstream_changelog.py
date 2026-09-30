@@ -56,3 +56,12 @@ def test_render_comment_cap():
     p = {'ahead_by': 3, 'commits': [{'sha': f'c{i}', 'commit': {'message': 'm' * 500}} for i in range(3)],
          'files': [{'filename': 'CHANGELOG.md', 'patch': 'x' * 100000}]}
     assert len(uc.render_comment('r/o', 'a', 'b', uc.classify(p))) <= 30000
+
+def test_render_comment_flags_truncated_compare():
+    p = {'ahead_by': 5173, 'commits': [{'sha': f'c{i}', 'commit': {'message': 'fix'}} for i in range(250)]}
+    text = uc.render_comment('r/o', 'a', 'b', uc.classify(p))
+    assert 'only 250 of 5173 commits' in text
+
+def test_render_comment_no_truncation_warning_when_complete():
+    p = {'ahead_by': 2, 'commits': [{'sha': f'c{i}', 'commit': {'message': 'fix'}} for i in range(2)]}
+    assert 'only' not in uc.render_comment('r/o', 'a', 'b', uc.classify(p))

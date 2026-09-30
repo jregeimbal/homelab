@@ -195,6 +195,11 @@ def render_comment(repo: str, old: str, new: str, cls: dict) -> str:
     lines: list[str] = ["## Upstream hermes-agent diff", ""]
     lines.append(f"- base tag: `{old}` → `{new}` (repo `{repo}`)")
     lines.append(f"- `+{cls['ahead_by']} commits` (behind by {cls['behind_by']})")
+    if len(cls["commits"]) < cls["ahead_by"]:
+        lines.append(
+            f"- ⚠️ compare API truncated: only {len(cls['commits'])} of {cls['ahead_by']} commits "
+            "were scanned for breaking markers — skim the upstream release notes too"
+        )
     lines.append("")
 
     commits = cls["commits"]
@@ -284,6 +289,8 @@ def main(argv: list[str] | None = None) -> int:
         f"upstream base {old} → {new}: "
         f"{cls['ahead_by']} commits ahead, {cls['behind_by']} behind"
     )
+    if len(cls["commits"]) < cls["ahead_by"]:
+        print(f"warning: compare API truncated; only {len(cls['commits'])} commits scanned")
     if cls["breaking_detected"]:
         print(f"breaking markers detected in {len(cls['breaking'])} line(s):")
         for line in cls["breaking"][:20]:
