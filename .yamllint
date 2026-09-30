@@ -16,3 +16,4 @@ rules:
 ignore:
   - "*.sealedsecret.yaml"
   - "*kustomization.yaml"
+  - "tests/fixtures/"  # generated helm/PyYAML output, kept verbatim
