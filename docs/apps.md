@@ -8,7 +8,7 @@
 
 ### Components
 
-The Hermes Helm chart deploys a single pod with 3 containers:
+The Hermes Helm chart deploys a single pod with 2 containers:
 
 1. **hermes** (main) — Hermes Agent runtime
    - Image: `nousresearch/hermes-agent:main`
@@ -20,9 +20,7 @@ The Hermes Helm chart deploys a single pod with 3 containers:
    - CDP endpoint: `ws://127.0.0.1:3000/`
    - Resources: 2 CPU / 4Gi memory limit
 
-3. **pip-install** (init container) — Dependency installation
-   - Optional Python extras (faster-whisper, firecrawl, …) are installed on demand by hermes into `/opt/data/lazy-packages` (appended to `sys.path`; the venv always wins)
-   - Ensures packages are available on persistent volume
+**Python dependencies** (not a container) — core packages (discord.py, python-telegram-bot, python-dotenv) live in the image's sealed venv `/opt/hermes/.venv`; optional extras (faster-whisper, firecrawl, …) are lazy-installed by hermes into `/opt/data/lazy-packages` (appended to `sys.path`; the venv always wins)
 
 ### Integrations
 
@@ -70,7 +68,7 @@ Referenced from `hermes-jon-secrets` SealedSecret. Contains:
 - **No Discord or Telegram** — only WhatsApp integration (`"15404194480"`)
 - **SealedSecret:** `hermes-ana-secrets` (API server key)
 - **WhatsApp reply prefix:** `"🤖 *Ana's Agent*\n──────\n"`
-- **No pip-install init container for telegram** — only installs `discord.py` and `faster-whisper` (telegram package not needed)
+- **Python dependencies:** same as jon-agent — sealed venv in the image plus hermes-managed extras (e.g. `faster-whisper`) lazy-installed into `/opt/data/lazy-packages`
 - **Data volume claim name:** `hermes-ana-data` (vs `hermes-hermes-agent-data` for jon)
 - **fullnameOverride:** `hermes-ana` (vs default `hermes` for jon)
 - **Base URL:** Same local model endpoint (`http://jonathans-mac-studio:1234/v1`)

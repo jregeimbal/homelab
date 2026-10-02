@@ -147,10 +147,9 @@ See [docs/apps.md](./apps.md) for detailed application reference.
 │  │  │ hermes   │  │ browserless-chromium    │  │    │
 │  │  │ agent    │  │ (CDP browser automation)│  │    │
 │  │  └──────────┘  └────────────────────────┘  │    │
-│  │  ┌──────────┐                              │    │
-│  │  │ pip-install│ (init container)            │    │
-│  │  └──────────┘ (discord.py, telegram,       │    │
-│  │                faster-whisper)              │    │
+│  │  Python deps: sealed venv (discord.py,      │    │
+│  │  telegram) + lazy-packages on the PVC       │    │
+│  │  (faster-whisper, firecrawl; venv wins)     │    │
 │  └─────────────────────────────────────────────┘    │
 │       │    │    │    │                              │
 │       │    │    │    └──► WhatsApp                   │

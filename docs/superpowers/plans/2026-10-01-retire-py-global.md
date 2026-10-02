@@ -309,7 +309,7 @@ Ask the user to message each agent once (Wander via WhatsApp) and confirm replie
 
 ### Task 5: Soak, then delete retired data (no earlier than 2026-10-04)
 
-**Files:** none (cluster-only). This is irreversible; get explicit user confirmation first.
+**Files:** none (cluster-only). This is irreversible; get explicit user confirmation first. After this task, reverting the Task 3 PR is no longer a full rollback: the retired directories are gone, so a reverted `PYTHONPATH` would point at an empty path.
 
 - [ ] **Step 1: Confirm no regressions during the soak**
 
@@ -317,7 +317,17 @@ Ask the user to message each agent once (Wander via WhatsApp) and confirm replie
 for ns in jon-agent ana-agent wander-agent; do kubectl get pods -n $ns -o jsonpath='{range .items[*]}{.metadata.name} restarts={.status.containerStatuses[*].restartCount}{"\n"}{end}'; done
 ```
 
-Expected: no restarts attributable to import errors. Ask the user to confirm all three agents behaved normally since Task 4.
+Expected: no restarts attributable to import errors.
+
+Then confirm nothing recreated py-global during the soak:
+
+```bash
+for ns in jon-agent ana-agent wander-agent; do P=$(kubectl get pods -n $ns -o jsonpath='{.items[0].metadata.name}'); kubectl exec -n $ns "$P" -c hermes-agent -- sh -c 'ls -d /opt/data/py-global 2>/dev/null && echo "RECREATED in '"$ns"'" || echo "'"$ns"': absent (ok)"'; done
+```
+
+Expected: all three `absent (ok)` (the scan for skills' `pip install` hints timed out on Jon's PVC in the inventory, so confirm nothing rebuilt the directory).
+
+Ask the user to confirm all three agents behaved normally since Task 4.
 
 - [ ] **Step 2: Delete (after explicit user OK)**
 
