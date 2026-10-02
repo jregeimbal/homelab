@@ -1,6 +1,6 @@
 # Pre-Merge CI Gates (Hermes Image Bumps)
 
-Two checks gate any PR or push touching `Dockerfile`, `requirements.txt`, or `assets/**` (the only paths that trigger the Docker Build workflow). They exist because a base-image bump can silently change runtime behavior (e.g. the 0.21.5 dashboard auth gate that crash-looped the desktop container).
+Two checks gate PRs and pushes to `main`. On every PR, a `changes` job decides whether they do real work: they run when the PR touches the image inputs (`Dockerfile`, `requirements.txt`, `assets/**`), the replayed manifests (`flux/apps/hermes-*.yaml`), the chart pin (`flux/cluster/helmrepositories.yaml`), or the gate code itself; otherwise they report *skipped*, which satisfies the required check. Pushes to `main` still trigger only on image inputs and the workflow file. They exist because a base-image bump can silently change runtime behavior (e.g. the 0.21.5 dashboard auth gate that crash-looped the desktop container).
 
 ## What the gates do
 
@@ -54,4 +54,6 @@ Read the posted PR comment. Judge each quoted breaking line:
 
 ## Branch protection
 
-Both checks must be **required** on `main`: Settings → Branches → branch protection rule → *Require status checks to pass before merging* → search for **"Contract Tests"** and **"Upstream Changelog"** (check "Require branches to be up to date" if you like). Until then the gates run and report, but don't block merges.
+Both checks are **required** on `main` via the `main` repository ruleset (Settings → Rules), targeting the default branch only.
+
+A direct push can never carry these checks, so `bump-version` pushes its manifest commit as the **Homelab bump image CI** GitHub App (App ID in repo variable `BUMP_APP_ID`, key in secret `BUMP_APP_PRIVATE_KEY`, Contents: read & write, installed on this repo only), which is on the ruleset's bypass list. `GITHUB_TOKEN` cannot be a bypass actor. If you rotate the App key, update the secret; if bump pushes start failing with `GH013 … required status checks are expected`, check that the App is still installed and still on the bypass list.
