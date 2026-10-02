@@ -98,7 +98,6 @@ spec:
       GATEWAY_ALLOW_ALL_USERS: "false"
       HERMES_GATEWAY_PLATFORM_CONNECT_TIMEOUT: "90"
       PATH: /root/.local/bin:/opt/hermes/.venv/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
-      PYTHONPATH: /opt/data/py-global
       WHATSAPP_ALLOW_ALL_USERS: "true"
       WHATSAPP_ALLOWED_USERS: "*"
       WHATSAPP_ENABLED: "true"

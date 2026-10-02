@@ -1,6 +1,6 @@
 # Pre-Merge CI Gates (Hermes Image Bumps)
 
-Two checks gate PRs and pushes to `main`. On every PR, a `changes` job decides whether they do real work: they run when the PR touches the image inputs (`Dockerfile`, `requirements.txt`, `assets/**`), the replayed manifests (`flux/apps/hermes-*.yaml`), the chart pin (`flux/cluster/helmrepositories.yaml`), or the gate code itself; otherwise they report *skipped*, which satisfies the required check. Pushes to `main` still trigger only on image inputs and the workflow file. They exist because a base-image bump can silently change runtime behavior (e.g. the 0.21.5 dashboard auth gate that crash-looped the desktop container).
+Two checks gate PRs and pushes to `main`. On every PR, a `changes` job decides whether they do real work: they run when the PR touches the image inputs (`Dockerfile`, `assets/**`), the replayed manifests (`flux/apps/hermes-*.yaml`), the chart pin (`flux/cluster/helmrepositories.yaml`), or the gate code itself; otherwise they report *skipped*, which satisfies the required check. Pushes to `main` still trigger only on image inputs and the workflow file. They exist because a base-image bump can silently change runtime behavior (e.g. the 0.21.5 dashboard auth gate that crash-looped the desktop container).
 
 ## What the gates do
 
