@@ -21,7 +21,7 @@ The Hermes Helm chart deploys a single pod with 3 containers:
    - Resources: 2 CPU / 4Gi memory limit
 
 3. **pip-install** (init container) — Dependency installation
-   - Installs `discord.py`, `python-telegram-bot`, `faster-whisper` to `/opt/data/py-global`
+   - Optional Python extras (faster-whisper, firecrawl, …) are installed on demand by hermes into `/opt/data/lazy-packages` (appended to `sys.path`; the venv always wins)
    - Ensures packages are available on persistent volume
 
 ### Integrations

@@ -57,7 +57,6 @@ spec:
       BROWSER_CDP_URL: ws://127.0.0.1:3000/
       GATEWAY_ALLOW_ALL_USERS: "false"
       HERMES_GATEWAY_PLATFORM_CONNECT_TIMEOUT: "90"
-      PYTHONPATH: /opt/data/py-global
       WHATSAPP_ALLOWED_USERS: "15404194480"
       WHATSAPP_ENABLED: "true"
       WHATSAPP_MODE: self-chat
