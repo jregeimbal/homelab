@@ -8,12 +8,12 @@ on:
       - Dockerfile
       - requirements.txt
       - assets/**
+      - .github/workflows/docker-build.yml
+  # No paths filter on PRs: "Contract Tests" and "Upstream Changelog Diff" are
+  # required checks, so they must always report. The `changes` job decides
+  # whether they do real work or skip (a skipped job satisfies a required check).
   pull_request:
     branches: [main]
-    paths:
-      - Dockerfile
-      - requirements.txt
-      - assets/**
   workflow_dispatch:
 
 concurrency:
@@ -26,10 +26,45 @@ env:
   OWNER: jregeimbal
 
 jobs:
+  changes:
+    name: Detect Gate-Relevant Changes
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    outputs:
+      gates: ${{ steps.diff.outputs.gates }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Diff against base
+        id: diff
+        env:
+          EVENT: ${{ github.event_name }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: |
+          # push is already path-filtered and dispatch is deliberate: always run.
+          if [ "$EVENT" != "pull_request" ]; then
+            echo "gates=true" >> "$GITHUB_OUTPUT"; exit 0
+          fi
+          # Image inputs, the manifests and chart pin the contract tests replay,
+          # and the gate code itself.
+          PATTERN='^(Dockerfile|requirements\.txt|assets/|flux/apps/hermes-[a-z]+\.yaml|flux/cluster/helmrepositories\.yaml|scripts/(manifest-contract-test|upstream-changelog)\.py|tests/|\.github/workflows/docker-build\.yml)'
+          CHANGED=$(git diff --name-only "$BASE_SHA" HEAD)
+          echo "$CHANGED"
+          if echo "$CHANGED" | grep -qE "$PATTERN"; then
+            echo "gates=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "gates=false" >> "$GITHUB_OUTPUT"
+          fi
+
   build-push:
     name: Build and Push
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    needs: [changes]
+    if: needs.changes.outputs.gates == 'true'
     permissions:
       contents: read
       packages: write
@@ -231,15 +266,23 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     needs: [build-push, validate-manifests, validate-image]
-    if: github.event_name == 'push' && success() && github.actor != 'github-actions[bot]'
-    env:
-      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    if: github.event_name == 'push' && success() && !endsWith(github.actor, '[bot]')
     steps:
+      # The main ruleset requires the gate checks, which a direct push can never
+      # carry, and GITHUB_TOKEN cannot be a ruleset bypass actor. Push as the
+      # "Homelab bump image CI" GitHub App instead, which is on the bypass list.
+      - name: Mint App token
+        id: app_token
+        uses: actions/create-github-app-token@v2
+        with:
+          app-id: ${{ vars.BUMP_APP_ID }}
+          private-key: ${{ secrets.BUMP_APP_PRIVATE_KEY }}
+
       - name: Checkout
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
-          token: ${{ secrets.GITHUB_TOKEN }}
+          token: ${{ steps.app_token.outputs.token }}
 
       - name: Get base image version
         id: version
@@ -287,11 +330,16 @@ jobs:
           sed -i "s|tag: .*|tag: \"${IMAGE#*:}\"|" flux/apps/hermes-wander.yaml
 
       - name: Commit and push manifest updates
+        env:
+          APP_SLUG: ${{ steps.app_token.outputs.app-slug }}
+          GH_TOKEN: ${{ steps.app_token.outputs.token }}
         run: |
           set -eo pipefail
           VERSION="${{ steps.version.outputs.version }}"
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
+          BOT="${APP_SLUG}[bot]"
+          BOT_ID=$(gh api "/users/${BOT}" --jq .id)
+          git config user.name "$BOT"
+          git config user.email "${BOT_ID}+${BOT}@users.noreply.github.com"
           git add flux/apps/hermes-jon.yaml flux/apps/hermes-ana.yaml flux/apps/hermes-wander.yaml
           git commit -m "chore: bump hermes image to ${VERSION}-${{ steps.git_sha.outputs.sha }}" || echo "No changes to commit"
           git push --force-with-lease 2>&1 || { echo "Git push failed - check for conflicts"; exit 1; }
@@ -300,6 +348,8 @@ jobs:
     name: Upstream Changelog Diff
     runs-on: ubuntu-latest
     timeout-minutes: 5
+    needs: [changes]
+    if: needs.changes.outputs.gates == 'true'
     permissions:
       contents: read
       pull-requests: write
