@@ -265,7 +265,10 @@ jobs:
     name: Bump Image Version
     runs-on: ubuntu-latest
     timeout-minutes: 5
-    needs: [build-push, validate-manifests, validate-image]
+    # Deploy only after the contract tests pass on this exact image. Not
+    # upstream-changelog: it fails on breaking markers by design, and a human
+    # already reviewed (and overrode) that on the PR.
+    needs: [build-push, validate-manifests, validate-image, contract-tests]
     if: github.event_name == 'push' && success() && !endsWith(github.actor, '[bot]')
     steps:
       # The main ruleset requires the gate checks, which a direct push can never
