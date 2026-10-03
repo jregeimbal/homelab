@@ -24,6 +24,8 @@ spec:
       existingSecret: hermes-wander-secrets
     config:
       values:
+        image_gen:
+          provider: openrouter
         agent:
           gateway_timeout: 1800
           max_turns: 500
