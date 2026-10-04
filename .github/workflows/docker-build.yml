@@ -88,7 +88,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 2
     needs: [build-push]
-    if: github.event_name == 'push' && success()
+    if: (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && success()
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -118,7 +118,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     needs: [build-push]
-    if: github.event_name == 'push' && success()
+    if: (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && success()
     steps:
       - name: Log in to GHCR
         uses: docker/login-action@v3
@@ -157,7 +157,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     needs: [build-push, validate-manifests, validate-image]
-    if: github.event_name == 'push' && success() && github.actor != 'github-actions[bot]'
+    if: (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && success() && github.actor != 'github-actions[bot]'
     env:
       GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     steps:
