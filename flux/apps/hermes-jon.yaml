@@ -24,11 +24,17 @@ spec:
       existingSecret: hermes-jon-secrets
     config:
       values:
+        image_gen:
+          provider: openrouter
         agent:
           gateway_timeout: 1800
           max_turns: 500
           restart_drain_timeout: 60
           tool_use_enforcement: true
+        dashboard:
+          basic_auth:
+            username: jon
+            password_hash: "scrypt$16384$8$1$B5rFRJf54X6PtqZt3tt2kA==$gaNio1AY8BJwtKXK32JEm08BQNinGzcArMT5tTAF/0s="
         browser:
           allow_private_urls: false
           command_timeout: 60
@@ -103,7 +109,6 @@ spec:
       GATEWAY_ALLOW_ALL_USERS: "false"
       HERMES_GATEWAY_PLATFORM_CONNECT_TIMEOUT: "90"
       PATH: /root/.local/bin:/opt/hermes/.venv/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
-      PYTHONPATH: /opt/data/py-global
       TELEGRAM_ALLOWED_USERS: "8238305614"
       TELEGRAM_HOME_CHANNEL: "-1003912742246"
       WHATSAPP_ALLOWED_USERS: "15409075116"
@@ -133,7 +138,7 @@ spec:
           seccompProfile:
             type: RuntimeDefault
       - name: hermes-desktop
-        image: ghcr.io/jregeimbal/hermes-agent-jregeimbal-homelab:v2026.9.11-f593bc0
+        image: ghcr.io/jregeimbal/hermes-agent-jregeimbal-homelab:v2026.9.24-f599ee6
         imagePullPolicy: IfNotPresent
         command:
           - hermes
@@ -161,7 +166,7 @@ spec:
         resources:
           limits:
             cpu: "500m"
-            memory: 512Mi
+            memory: 768Mi
           requests:
             cpu: 100m
             memory: 128Mi
@@ -187,7 +192,7 @@ spec:
         command:
           - /bin/sh
           - -ec
-        image: ghcr.io/jregeimbal/hermes-agent-jregeimbal-homelab:v2026.9.11-f593bc0
+        image: ghcr.io/jregeimbal/hermes-agent-jregeimbal-homelab:v2026.9.24-f599ee6
         imagePullPolicy: IfNotPresent
         name: copy-hermes-source
         securityContext:
@@ -220,7 +225,7 @@ spec:
         command:
           - /bin/sh
           - -ec
-        image: ghcr.io/jregeimbal/hermes-agent-jregeimbal-homelab:v2026.9.11-f593bc0
+        image: ghcr.io/jregeimbal/hermes-agent-jregeimbal-homelab:v2026.9.24-f599ee6
         imagePullPolicy: IfNotPresent
         name: bootstrap-home-config
         securityContext:
@@ -244,7 +249,7 @@ spec:
         command:
           - /bin/sh
           - -ec
-        image: ghcr.io/jregeimbal/hermes-agent-jregeimbal-homelab:v2026.9.11-f593bc0
+        image: ghcr.io/jregeimbal/hermes-agent-jregeimbal-homelab:v2026.9.24-f599ee6
         imagePullPolicy: IfNotPresent
         name: fix-data-ownership
         securityContext:
@@ -267,7 +272,7 @@ spec:
         name: run-tmp
     image:
       repository: ghcr.io/jregeimbal/hermes-agent-jregeimbal-homelab
-      tag: "v2026.9.11-f593bc0"
+      tag: "v2026.9.24-f599ee6"
       pullPolicy: IfNotPresent
     podSecurityContext:
       fsGroup: 10000

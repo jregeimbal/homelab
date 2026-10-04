@@ -6,14 +6,13 @@ on:
     branches: [main]
     paths:
       - Dockerfile
-      - requirements.txt
       - assets/**
+      - .github/workflows/docker-build.yml
+  # No paths filter on PRs: "Contract Tests" and "Upstream Changelog Diff" are
+  # required checks, so they must always report. The `changes` job decides
+  # whether they do real work or skip (a skipped job satisfies a required check).
   pull_request:
     branches: [main]
-    paths:
-      - Dockerfile
-      - requirements.txt
-      - assets/**
   workflow_dispatch:
 
 concurrency:
@@ -26,10 +25,45 @@ env:
   OWNER: jregeimbal
 
 jobs:
+  changes:
+    name: Detect Gate-Relevant Changes
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    outputs:
+      gates: ${{ steps.diff.outputs.gates }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Diff against base
+        id: diff
+        env:
+          EVENT: ${{ github.event_name }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: |
+          # push is already path-filtered and dispatch is deliberate: always run.
+          if [ "$EVENT" != "pull_request" ]; then
+            echo "gates=true" >> "$GITHUB_OUTPUT"; exit 0
+          fi
+          # Image inputs, the manifests and chart pin the contract tests replay,
+          # and the gate code itself.
+          PATTERN='^(Dockerfile|assets/|flux/apps/hermes-[a-z]+\.yaml|flux/cluster/helmrepositories\.yaml|scripts/(manifest-contract-test|upstream-changelog)\.py|tests/|\.github/workflows/docker-build\.yml)'
+          CHANGED=$(git diff --name-only "$BASE_SHA" HEAD)
+          echo "$CHANGED"
+          if echo "$CHANGED" | grep -qE "$PATTERN"; then
+            echo "gates=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "gates=false" >> "$GITHUB_OUTPUT"
+          fi
+
   build-push:
     name: Build and Push
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    needs: [changes]
+    if: needs.changes.outputs.gates == 'true'
     permissions:
       contents: read
       packages: write
@@ -77,18 +111,106 @@ jobs:
         with:
           context: .
           platforms: linux/amd64,linux/arm64
-          push: ${{ github.event_name == 'push' }}
+          # Every build publishes the content-addressed sha tag (version/
+          # latest/date tags stay push-only) so contract-tests can pull the
+          # image on any event type, including PRs (pre-merge gate).
+          push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+
+  contract-tests:
+    name: Contract Tests (manifest replay)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    needs: [build-push]
+    permissions:
+      contents: read
+      packages: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Resolve image refs
+        id: img
+        run: |
+          REF="${{ env.REGISTRY }}/${{ env.OWNER }}/${{ env.IMAGE_NAME }}:"
+          if [ "${{ github.event_name }}" = "push" ]; then
+            TAG="${{ needs.build-push.outputs.version }}-${{ needs.build-push.outputs.sha }}"
+          else
+            TAG="sha-${{ needs.build-push.outputs.sha }}"  # metadata-action type=sha prefix
+          fi
+          echo "ref=${REF}${TAG}" >> "$GITHUB_OUTPUT"
+          echo "base=$(grep '^FROM ' Dockerfile | awk '{print $2}')" >> "$GITHUB_OUTPUT"
+
+      - name: Install Python deps
+        run: python3 -m pip install --quiet pyyaml pytest
+
+      - name: Install helm
+        run: curl -sSfL https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
+
+      - name: Clone pinned chart
+        id: chart
+        run: |
+          COMMIT=$(python3 -c "
+          import yaml, glob
+          for f in glob.glob('flux/cluster/*.yaml'):
+              for d in yaml.safe_load_all(open(f)):
+                  if d and d.get('kind') == 'GitRepository' and d['metadata']['name'] == 'hermes-agent':
+                      print(d['spec']['ref']['commit'])")
+          git clone --depth 1 https://github.com/ultraworkers/hermes-agent-helm-chart chart
+          git -C chart fetch --depth 1 origin "$COMMIT"
+          git -C chart checkout -q "$COMMIT"
+          echo "dir=$PWD/chart" >> "$GITHUB_OUTPUT"
+
+      - name: Run unit tests
+        run: python3 -m pytest tests/ -q
+
+      - name: Assert no py-global layer
+        # 2026-09-28 incident + 2026-10-01 inventory: a PYTHONPATH dir on the
+        # PVC shadowed the sealed venv. Optional deps belong in hermes's
+        # lazy-install target (appended to sys.path), never ahead of the venv.
+        run: |
+          docker run --rm --entrypoint sh "${{ steps.img.outputs.ref }}" -c '
+            set -e
+            [ -z "${PYTHONPATH:-}" ] || { echo "image sets PYTHONPATH=$PYTHONPATH"; exit 1; }
+            [ ! -e /opt/data/py-global ] || { echo "image ships /opt/data/py-global"; exit 1; }
+            echo "ok: no PYTHONPATH, no /opt/data/py-global"'
+          if grep -n 'PYTHONPATH' flux/apps/hermes-*.yaml; then
+            echo "manifests still set PYTHONPATH"; exit 1
+          fi
+
+      - name: Run contract tests
+        run: |
+          python3 scripts/manifest-contract-test.py \
+            --image "${{ steps.img.outputs.ref }}" \
+            --base-image "${{ steps.img.outputs.base }}" \
+            --chart-dir "${{ steps.chart.outputs.dir }}" \
+            --manifests flux/apps/hermes-jon.yaml flux/apps/hermes-ana.yaml flux/apps/hermes-wander.yaml \
+            --survive 45 --parallel 3 --log-dir /tmp/contract-logs
+
+      - name: Upload container logs
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: contract-test-logs
+          path: /tmp/contract-logs/
+          if-no-files-found: ignore
 
   validate-manifests:
     name: Validate K8s Manifests
     runs-on: ubuntu-latest
     timeout-minutes: 2
     needs: [build-push]
-    if: (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && success()
+    if: github.event_name == 'push' && success()
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -118,7 +240,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     needs: [build-push]
-    if: (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && success()
+    if: github.event_name == 'push' && success()
     steps:
       - name: Log in to GHCR
         uses: docker/login-action@v3
@@ -136,9 +258,8 @@ jobs:
       - name: Verify discord package
         run: |
           docker run --rm \
-            -e PYTHONPATH=/opt/data/py-global \
             ${{ env.REGISTRY }}/${{ env.OWNER }}/${{ env.IMAGE_NAME }}:${{ needs.build-push.outputs.version }}-${{ needs.build-push.outputs.sha }} \
-            python3 -c "import discord; print(discord.__version__)"
+            /opt/hermes/.venv/bin/python -c "import discord; print(discord.__version__)"
 
       - name: Verify gh CLI
         run: |
@@ -156,16 +277,27 @@ jobs:
     name: Bump Image Version
     runs-on: ubuntu-latest
     timeout-minutes: 5
-    needs: [build-push, validate-manifests, validate-image]
-    if: (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && success() && github.actor != 'github-actions[bot]'
-    env:
-      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    # Deploy only after the contract tests pass on this exact image. Not
+    # upstream-changelog: it fails on breaking markers by design, and a human
+    # already reviewed (and overrode) that on the PR.
+    needs: [build-push, validate-manifests, validate-image, contract-tests]
+    if: github.event_name == 'push' && success() && !endsWith(github.actor, '[bot]')
     steps:
+      # The main ruleset requires the gate checks, which a direct push can never
+      # carry, and GITHUB_TOKEN cannot be a ruleset bypass actor. Push as the
+      # "Homelab bump image CI" GitHub App instead, which is on the bypass list.
+      - name: Mint App token
+        id: app_token
+        uses: actions/create-github-app-token@v2
+        with:
+          app-id: ${{ vars.BUMP_APP_ID }}
+          private-key: ${{ secrets.BUMP_APP_PRIVATE_KEY }}
+
       - name: Checkout
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
-          token: ${{ secrets.GITHUB_TOKEN }}
+          token: ${{ steps.app_token.outputs.token }}
 
       - name: Get base image version
         id: version
@@ -213,11 +345,54 @@ jobs:
           sed -i "s|tag: .*|tag: \"${IMAGE#*:}\"|" flux/apps/hermes-wander.yaml
 
       - name: Commit and push manifest updates
+        env:
+          APP_SLUG: ${{ steps.app_token.outputs.app-slug }}
+          GH_TOKEN: ${{ steps.app_token.outputs.token }}
         run: |
           set -eo pipefail
           VERSION="${{ steps.version.outputs.version }}"
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
+          BOT="${APP_SLUG}[bot]"
+          BOT_ID=$(gh api "/users/${BOT}" --jq .id)
+          git config user.name "$BOT"
+          git config user.email "${BOT_ID}+${BOT}@users.noreply.github.com"
           git add flux/apps/hermes-jon.yaml flux/apps/hermes-ana.yaml flux/apps/hermes-wander.yaml
           git commit -m "chore: bump hermes image to ${VERSION}-${{ steps.git_sha.outputs.sha }}" || echo "No changes to commit"
           git push --force-with-lease 2>&1 || { echo "Git push failed - check for conflicts"; exit 1; }
+
+  upstream-changelog:
+    name: Upstream Changelog Diff
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    needs: [changes]
+    if: needs.changes.outputs.gates == 'true'
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Python deps
+        run: python3 -m pip install --quiet pyyaml
+
+      - name: Diff upstream base
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          python3 scripts/upstream-changelog.py \
+            --dockerfile Dockerfile \
+            --manifests flux/apps/hermes-jon.yaml flux/apps/hermes-ana.yaml flux/apps/hermes-wander.yaml \
+            --token "${GITHUB_TOKEN}" \
+            --out-json /tmp/changelog.json \
+            --out-comment-file /tmp/changelog-comment.md
+
+      - name: Post PR comment
+        if: github.event_name == 'pull_request' && always()
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          [ -s /tmp/changelog-comment.md ] || { echo "nothing to post"; exit 0; }
+          curl -sf -X POST \
+            "https://api.github.com/repos/${{ github.repository }}/issues/${{ github.event.pull_request.number }}/comments" \
+            -H "Authorization: Bearer ${GITHUB_TOKEN}" -H "Accept: application/vnd.github+json" \
+            -d "{\"body\": $(jq -Rs . /tmp/changelog-comment.md)}"

@@ -24,6 +24,8 @@ spec:
       existingSecret: hermes-ana-secrets
     config:
       values:
+        image_gen:
+          provider: openrouter
         agent:
           gateway_timeout: 1800
           max_turns: 90
@@ -57,7 +59,6 @@ spec:
       BROWSER_CDP_URL: ws://127.0.0.1:3000/
       GATEWAY_ALLOW_ALL_USERS: "false"
       HERMES_GATEWAY_PLATFORM_CONNECT_TIMEOUT: "90"
-      PYTHONPATH: /opt/data/py-global
       WHATSAPP_ALLOWED_USERS: "15404194480"
       WHATSAPP_ENABLED: "true"
       WHATSAPP_MODE: self-chat
@@ -95,7 +96,7 @@ spec:
         command:
           - /bin/sh
           - -ec
-        image: ghcr.io/jregeimbal/hermes-agent-jregeimbal-homelab:v2026.9.11-f593bc0
+        image: ghcr.io/jregeimbal/hermes-agent-jregeimbal-homelab:v2026.9.24-f599ee6
         imagePullPolicy: IfNotPresent
         name: fix-data-ownership
         securityContext:
@@ -127,7 +128,7 @@ spec:
     fullnameOverride: hermes-ana
     image:
       repository: ghcr.io/jregeimbal/hermes-agent-jregeimbal-homelab
-      tag: "v2026.9.11-f593bc0"
+      tag: "v2026.9.24-f599ee6"
       pullPolicy: IfNotPresent
     podSecurityContext:
       fsGroup: 10000
