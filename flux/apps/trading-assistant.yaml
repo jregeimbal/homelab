@@ -1,0 +1,392 @@
+---
+# Trading assistant (github.com/jregeimbal/trading-assistant, private).
+# Postgres 18, the web UI (strategy builder, backtests, reports, Agents tab) on the tailnet,
+# and the daily trading-agent jobs. Image is private on GHCR: pulled with `ghcr-pull`.
+# Secrets: trading-assistant-secrets (Postgres password, DB URL, Webull paper keys).
+
+# ---------------------------------------------------------------- Postgres
+apiVersion: v1
+kind: Service
+metadata:
+  name: trading-postgres
+  namespace: trading-assistant
+spec:
+  selector:
+    app.kubernetes.io/name: trading-postgres
+  ports:
+    - name: postgres
+      port: 5432
+      targetPort: 5432
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: trading-postgres
+  namespace: trading-assistant
+spec:
+  serviceName: trading-postgres
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: trading-postgres
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: trading-postgres
+    spec:
+      securityContext:
+        runAsUser: 999
+        runAsGroup: 999
+        fsGroup: 999
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: postgres
+          image: postgres:18
+          args:
+            - -c
+            - shared_buffers=256MB
+            - -c
+            - work_mem=32MB
+            - -c
+            - max_wal_size=1GB
+          env:
+            - name: POSTGRES_USER
+              value: trading
+            - name: POSTGRES_DB
+              value: trading
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: trading-assistant-secrets
+                  key: POSTGRES_PASSWORD
+          ports:
+            - name: postgres
+              containerPort: 5432
+          readinessProbe:
+            exec:
+              command: ["pg_isready", "-U", "trading", "-d", "trading"]
+            periodSeconds: 10
+          livenessProbe:
+            exec:
+              command: ["pg_isready", "-U", "trading", "-d", "trading"]
+            initialDelaySeconds: 30
+            periodSeconds: 30
+          resources:
+            requests:
+              cpu: 100m
+              memory: 384Mi
+            limits:
+              memory: 1Gi
+          securityContext:
+            allowPrivilegeEscalation: false
+          volumeMounts:
+            # Postgres 18+ images declare VOLUME /var/lib/postgresql (data lives in 18/docker under it);
+            # mounting .../data instead would silently write to an anonymous volume.
+            - name: data
+              mountPath: /var/lib/postgresql
+            - name: run
+              mountPath: /var/run/postgresql
+      volumes:
+        - name: run
+          emptyDir: {}
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        storageClassName: longhorn
+        resources:
+          requests:
+            storage: 10Gi
+
+# ---------------------------------------------------------------- Web UI
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: trading-assistant-data
+  namespace: trading-assistant
+spec:
+  accessModes: ["ReadWriteOnce"]
+  storageClassName: longhorn
+  resources:
+    requests:
+      storage: 5Gi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: trading-assistant-web
+  namespace: trading-assistant
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate  # single RWO data volume
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: trading-assistant-web
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: trading-assistant-web
+    spec:
+      imagePullSecrets:
+        - name: ghcr-pull
+      securityContext:
+        runAsUser: 10001
+        runAsGroup: 10001
+        fsGroup: 10001
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: web
+          image: ghcr.io/jregeimbal/trading-assistant:202610071924_0c44ae7
+          args: ["serve", "--host", "0.0.0.0", "--port", "8765", "--no-open"]
+          envFrom:
+            - secretRef:
+                name: trading-assistant-secrets
+          ports:
+            - name: http
+              containerPort: 8765
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            periodSeconds: 15
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            initialDelaySeconds: 30
+            periodSeconds: 30
+            timeoutSeconds: 5
+          resources:
+            requests:
+              cpu: 250m
+              memory: 768Mi
+            limits:
+              # A full 2000-2026 backtest peaks around 1.6 GB on top of ~600 MB of loaded prices.
+              memory: 3Gi
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+          volumeMounts:
+            - name: data  # price cache, backtest artifacts, generated reports
+              mountPath: /data
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: trading-assistant-data
+        - name: tmp
+          emptyDir: {}
+---
+# Tailnet only, like Open WebUI. The UI has no login and the Agents tab can submit orders.
+apiVersion: v1
+kind: Service
+metadata:
+  name: trading-assistant
+  namespace: trading-assistant
+  annotations:
+    tailscale.com/hostname: trading-assistant
+spec:
+  type: LoadBalancer
+  loadBalancerClass: tailscale
+  selector:
+    app.kubernetes.io/name: trading-assistant-web
+  ports:
+    - name: http
+      port: 80
+      targetPort: 8765
+
+# ---------------------------------------------------------------- Daily trading agent
+# Decide at the close, trade just before the next close (Webull rejects market-on-close and
+# off-hours orders). Each job handles every enabled account; times are New York time.
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: trading-agent-plan
+  namespace: trading-assistant
+spec:
+  schedule: "15 18 * * 1-5"
+  timeZone: America/New_York
+  concurrencyPolicy: Forbid
+  startingDeadlineSeconds: 7200
+  successfulJobsHistoryLimit: 5
+  failedJobsHistoryLimit: 5
+  jobTemplate:
+    spec:
+      backoffLimit: 1
+      activeDeadlineSeconds: 2700
+      template:
+        metadata:
+          labels:
+            app.kubernetes.io/name: trading-agent
+            app.kubernetes.io/component: plan
+        spec:
+          restartPolicy: Never
+          imagePullSecrets:
+            - name: ghcr-pull
+          securityContext:
+            runAsUser: 10001
+            runAsGroup: 10001
+            runAsNonRoot: true
+            seccompProfile:
+              type: RuntimeDefault
+          containers:
+            - name: plan
+              image: ghcr.io/jregeimbal/trading-assistant:202610071924_0c44ae7
+              # Refreshes prices for current members, records fills, plans tomorrow's orders.
+              args: ["agent", "plan"]
+              envFrom:
+                - secretRef:
+                    name: trading-assistant-secrets
+              resources:
+                requests:
+                  cpu: 250m
+                  memory: 768Mi
+                limits:
+                  memory: 2Gi
+              securityContext:
+                allowPrivilegeEscalation: false
+                readOnlyRootFilesystem: true
+                capabilities:
+                  drop: ["ALL"]
+              volumeMounts:
+                - name: data  # scratch price cache, rebuilt from Postgres
+                  mountPath: /data
+                - name: tmp
+                  mountPath: /tmp
+          volumes:
+            - name: data
+              emptyDir: {}
+            - name: tmp
+              emptyDir: {}
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: trading-agent-execute
+  namespace: trading-assistant
+spec:
+  schedule: "50 15 * * 1-5"
+  timeZone: America/New_York
+  concurrencyPolicy: Forbid
+  # If the job can't start within 5 minutes, skip it rather than trade after the close.
+  startingDeadlineSeconds: 300
+  successfulJobsHistoryLimit: 5
+  failedJobsHistoryLimit: 5
+  jobTemplate:
+    spec:
+      backoffLimit: 0  # never retry order submission blindly
+      activeDeadlineSeconds: 480
+      template:
+        metadata:
+          labels:
+            app.kubernetes.io/name: trading-agent
+            app.kubernetes.io/component: execute
+        spec:
+          restartPolicy: Never
+          imagePullSecrets:
+            - name: ghcr-pull
+          securityContext:
+            runAsUser: 10001
+            runAsGroup: 10001
+            runAsNonRoot: true
+            seccompProfile:
+              type: RuntimeDefault
+          containers:
+            - name: execute
+              image: ghcr.io/jregeimbal/trading-assistant:202610071924_0c44ae7
+              # Submits planned orders for accounts with auto-submit on, then records fills.
+              args: ["agent", "execute"]
+              envFrom:
+                - secretRef:
+                    name: trading-assistant-secrets
+              resources:
+                requests:
+                  cpu: 100m
+                  memory: 256Mi
+                limits:
+                  memory: 768Mi
+              securityContext:
+                allowPrivilegeEscalation: false
+                readOnlyRootFilesystem: true
+                capabilities:
+                  drop: ["ALL"]
+              volumeMounts:
+                - name: tmp
+                  mountPath: /tmp
+          volumes:
+            - name: tmp
+              emptyDir: {}
+
+# ---------------------------------------------------------------- Monthly reference data
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: trading-data-reference
+  namespace: trading-assistant
+spec:
+  # S&P 500 membership history and sector classifications change slowly.
+  schedule: "0 7 1 * *"
+  timeZone: America/New_York
+  concurrencyPolicy: Forbid
+  startingDeadlineSeconds: 86400
+  successfulJobsHistoryLimit: 2
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      backoffLimit: 2
+      activeDeadlineSeconds: 3600
+      template:
+        metadata:
+          labels:
+            app.kubernetes.io/name: trading-agent
+            app.kubernetes.io/component: reference-data
+        spec:
+          restartPolicy: Never
+          imagePullSecrets:
+            - name: ghcr-pull
+          securityContext:
+            runAsUser: 10001
+            runAsGroup: 10001
+            runAsNonRoot: true
+            seccompProfile:
+              type: RuntimeDefault
+          containers:
+            - name: reference
+              image: ghcr.io/jregeimbal/trading-assistant:202610071924_0c44ae7
+              command: ["sh", "-c", "ta data universe && ta data sectors"]
+              envFrom:
+                - secretRef:
+                    name: trading-assistant-secrets
+              resources:
+                requests:
+                  cpu: 250m
+                  memory: 768Mi
+                limits:
+                  memory: 2Gi
+              securityContext:
+                allowPrivilegeEscalation: false
+                readOnlyRootFilesystem: true
+                capabilities:
+                  drop: ["ALL"]
+              volumeMounts:
+                - name: data
+                  mountPath: /data
+                - name: tmp
+                  mountPath: /tmp
+          volumes:
+            - name: data
+              emptyDir: {}
+            - name: tmp
+              emptyDir: {}

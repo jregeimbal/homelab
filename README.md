@@ -123,6 +123,7 @@ GitOps-managed Kubernetes cluster with Tailscale for external access and Longhor
 | Open WebUI | open-webui  | Web UI for LLM interaction, backed by Hermes   | Tailscale      |
 | Prometheus | monitoring  | Metrics collection and storage                 | ClusterIP      |
 | Grafana    | monitoring  | Metrics visualization dashboard                | Tailscale      |
+| Trading Assistant | trading-assistant | Strategy research UI and daily trading agent (Webull paper) | Tailscale LB |
 
 [Full app reference →](docs/apps.md)
 
