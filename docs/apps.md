@@ -113,6 +113,41 @@ Nothing outstanding — `API_SERVER_KEY` and `HERMES_DASHBOARD_SESSION_TOKEN` ar
 
 ---
 
+## Trading Assistant (trading-assistant namespace)
+
+**Source:** github.com/jregeimbal/trading-assistant (private)
+**Image:** `ghcr.io/jregeimbal/trading-assistant:<datetime_sha>` (private; pulled with the `ghcr-pull` SealedSecret), built by that repo's CI for amd64 and arm64
+**Manifests:** `flux/apps/trading-assistant.yaml`
+**Purpose:** Jon's S&P 500 strategy research (backtests, strategy builder, reports) and the daily trading agent that runs strategies in brokerage accounts (Webull paper now; live and IRA accounts later)
+
+### Components
+
+| Component | Kind | Details |
+|---|---|---|
+| `trading-postgres` | StatefulSet + Service | Postgres 18, 10Gi Longhorn at `/var/lib/postgresql` (the Postgres 18 volume path). Prices, strategies, backtest runs, accounts, agent orders. |
+| `trading-assistant-web` | Deployment | `ta serve`: strategy builder, Runs, Agents tab, reports. 5Gi Longhorn at `/data` (price cache, backtest artifacts). Memory limit 3Gi (full backtests peak ~1.6 GB). |
+| `trading-assistant` | Service (Tailscale LB) | Tailnet only: `trading-assistant.<tailnet>.ts.net`, plus an HTTP Basic login on every page and API route (user `jon`). Only `/healthz` is open, for probes. The Agents tab can submit orders. |
+| `trading-agent-plan` | CronJob, weekdays 18:15 ET | Refreshes prices, records fills, plans the next session's orders |
+| `trading-agent-execute` | CronJob, weekdays 15:50 ET | Submits planned orders as market orders before the 4 pm close. Skipped if it can't start within 5 minutes; never retried. |
+| `trading-data-reference` | CronJob, 1st of month 07:00 ET | S&P 500 membership history and sector classifications |
+
+All containers run as non-root with a read-only root filesystem, except Postgres (UID 999, writable data dir). Jobs rebuild their price cache from Postgres in an `emptyDir`.
+
+### Secrets
+
+- `trading-assistant-secrets`: `POSTGRES_PASSWORD`, `TA_DATABASE_URL`, `TA_AUTH_PASSWORD` (web UI login; the plaintext was shared with Jon directly, not stored in the repo), `WEBULL_PAPER_APP_KEY`, `WEBULL_PAPER_APP_SECRET`. Live Webull keys (`WEBULL_APP_KEY` / `WEBULL_APP_SECRET`) are deliberately left out until a live account is added in the Agents tab.
+- `ghcr-pull`: docker-registry secret with a read:packages-only token. Create it with `deploy/seal-ghcr-pull-secret.sh` in the trading-assistant repo.
+
+### Operations
+
+- **Run a job now:** `kubectl -n trading-assistant create job --from=cronjob/trading-agent-plan plan-manual-$(date +%s)`
+- **Logs:** `kubectl -n trading-assistant logs job/<name>`
+- **Pause trading:** `kubectl -n trading-assistant patch cronjob trading-agent-execute -p '{"spec":{"suspend":true}}'`. This won't survive the next Flux sync, so for a lasting pause set `suspend: true` in the manifest, or turn off auto-submit for the account in the Agents tab.
+- **Upgrade:** bump the image tag on all four containers in `flux/apps/trading-assistant.yaml`.
+- **Change the UI password:** re-seal `trading-assistant-secrets` with a new `TA_AUTH_PASSWORD`, keeping the other keys (`kubectl get secret` then `kubeseal`), then restart `trading-assistant-web`.
+
+---
+
 ## Open WebUI (open-webui namespace)
 
 **HelmRelease:** `open-webui` in `open-webui` namespace  

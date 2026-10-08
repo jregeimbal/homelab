@@ -12,3 +12,6 @@ resources:
   - hermes-ana-secrets.sealedsecret.yaml
   - hermes-wander-secrets.sealedsecret.yaml
   - monitoring.yaml
+  - trading-assistant.yaml
+  - trading-assistant-secrets.sealedsecret.yaml
+  - trading-assistant-ghcr-pull.sealedsecret.yaml
