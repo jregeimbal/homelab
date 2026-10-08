@@ -127,7 +127,7 @@ Nothing outstanding — `API_SERVER_KEY` and `HERMES_DASHBOARD_SESSION_TOKEN` ar
 | `trading-postgres` | StatefulSet + Service | Postgres 18, 10Gi Longhorn at `/var/lib/postgresql` (the Postgres 18 volume path). Prices, strategies, backtest runs, accounts, agent orders. |
 | `trading-assistant-web` | Deployment | `ta serve`: strategy builder, Runs, Agents tab, reports. 5Gi Longhorn at `/data` (price cache, backtest artifacts). Memory limit 3Gi (full backtests peak ~1.6 GB). |
 | `trading-assistant` | Service (Tailscale LB) | Tailnet only: `trading-assistant.<tailnet>.ts.net`, plus an HTTP Basic login on every page and API route (user `jon`). Only `/healthz` is open, for probes. The Agents tab can submit orders. |
-| `trading-agent-plan` | CronJob, weekdays 18:15 ET | Refreshes prices, records fills, plans the next session's orders |
+| `trading-agent-plan` | CronJob, weekdays 18:15 ET | Refreshes prices (last 45 days, plus full history only for tickers whose dividend/split adjustments changed), records fills, plans the next session's orders. A few minutes. |
 | `trading-agent-execute` | CronJob, weekdays 15:50 ET | Submits planned orders as market orders before the 4 pm close. Skipped if it can't start within 5 minutes; never retried. |
 | `trading-data-reference` | CronJob, 1st of month 07:00 ET | S&P 500 membership history and sector classifications |
 
