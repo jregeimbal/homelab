@@ -143,7 +143,7 @@ spec:
           type: RuntimeDefault
       containers:
         - name: web
-          image: ghcr.io/jregeimbal/trading-assistant:202610080935_dc4f574
+          image: ghcr.io/jregeimbal/trading-assistant:202610081914_8b19cd2
           args: ["serve", "--host", "0.0.0.0", "--port", "8765", "--no-open"]
           env:
             # HTTP Basic login for the whole UI and API (password: TA_AUTH_PASSWORD in the
@@ -247,7 +247,7 @@ spec:
               type: RuntimeDefault
           containers:
             - name: plan
-              image: ghcr.io/jregeimbal/trading-assistant:202610080935_dc4f574
+              image: ghcr.io/jregeimbal/trading-assistant:202610081914_8b19cd2
               # Refreshes prices for current members, records fills, plans tomorrow's orders.
               args: ["agent", "plan"]
               envFrom:
@@ -309,7 +309,7 @@ spec:
               type: RuntimeDefault
           containers:
             - name: execute
-              image: ghcr.io/jregeimbal/trading-assistant:202610080935_dc4f574
+              image: ghcr.io/jregeimbal/trading-assistant:202610081914_8b19cd2
               # Submits planned orders for accounts with auto-submit on, then records fills.
               args: ["agent", "execute"]
               envFrom:
@@ -369,7 +369,7 @@ spec:
               type: RuntimeDefault
           containers:
             - name: reference
-              image: ghcr.io/jregeimbal/trading-assistant:202610080935_dc4f574
+              image: ghcr.io/jregeimbal/trading-assistant:202610081914_8b19cd2
               command: ["sh", "-c", "ta data universe && ta data sectors"]
               envFrom:
                 - secretRef:
