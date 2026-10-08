@@ -2,7 +2,7 @@
 # Trading assistant (github.com/jregeimbal/trading-assistant, private).
 # Postgres 18, the web UI (strategy builder, backtests, reports, Agents tab) on the tailnet,
 # and the daily trading-agent jobs. Image is private on GHCR: pulled with `ghcr-pull`.
-# Secrets: trading-assistant-secrets (Postgres password, DB URL, Webull paper keys).
+# Secrets: trading-assistant-secrets (Postgres password, DB URL, UI password, Webull paper keys).
 
 # ---------------------------------------------------------------- Postgres
 apiVersion: v1
@@ -143,8 +143,13 @@ spec:
           type: RuntimeDefault
       containers:
         - name: web
-          image: ghcr.io/jregeimbal/trading-assistant:202610071924_0c44ae7
+          image: ghcr.io/jregeimbal/trading-assistant:202610072108_dee874f
           args: ["serve", "--host", "0.0.0.0", "--port", "8765", "--no-open"]
+          env:
+            # HTTP Basic login for the whole UI and API (password: TA_AUTH_PASSWORD in the
+            # sealed secret). /healthz stays open for the probes below.
+            - name: TA_AUTH_USERNAME
+              value: jon
           envFrom:
             - secretRef:
                 name: trading-assistant-secrets
@@ -187,7 +192,7 @@ spec:
         - name: tmp
           emptyDir: {}
 ---
-# Tailnet only, like Open WebUI. The UI has no login and the Agents tab can submit orders.
+# Tailnet only, like Open WebUI, and behind the app's own login (the Agents tab can submit orders).
 apiVersion: v1
 kind: Service
 metadata:
@@ -242,7 +247,7 @@ spec:
               type: RuntimeDefault
           containers:
             - name: plan
-              image: ghcr.io/jregeimbal/trading-assistant:202610071924_0c44ae7
+              image: ghcr.io/jregeimbal/trading-assistant:202610072108_dee874f
               # Refreshes prices for current members, records fills, plans tomorrow's orders.
               args: ["agent", "plan"]
               envFrom:
@@ -304,7 +309,7 @@ spec:
               type: RuntimeDefault
           containers:
             - name: execute
-              image: ghcr.io/jregeimbal/trading-assistant:202610071924_0c44ae7
+              image: ghcr.io/jregeimbal/trading-assistant:202610072108_dee874f
               # Submits planned orders for accounts with auto-submit on, then records fills.
               args: ["agent", "execute"]
               envFrom:
@@ -364,7 +369,7 @@ spec:
               type: RuntimeDefault
           containers:
             - name: reference
-              image: ghcr.io/jregeimbal/trading-assistant:202610071924_0c44ae7
+              image: ghcr.io/jregeimbal/trading-assistant:202610072108_dee874f
               command: ["sh", "-c", "ta data universe && ta data sectors"]
               envFrom:
                 - secretRef:
