@@ -143,7 +143,7 @@ spec:
           type: RuntimeDefault
       containers:
         - name: web
-          image: ghcr.io/jregeimbal/trading-assistant:202610082205_28e08bf
+          image: ghcr.io/jregeimbal/trading-assistant:202610082214_3b56241
           args: ["serve", "--host", "0.0.0.0", "--port", "8765", "--no-open"]
           env:
             # HTTP Basic login for the whole UI and API (password: TA_AUTH_PASSWORD in the
@@ -212,7 +212,8 @@ spec:
 
 # ---------------------------------------------------------------- Daily trading agent
 # Decide at the close, trade just before the next close (Webull rejects market-on-close and
-# off-hours orders). Each job handles every enabled account; times are New York time.
+# off-hours orders); accounts can opt to sell at 9:40 am instead. Each job handles every
+# enabled account; times are New York time.
 ---
 apiVersion: batch/v1
 kind: CronJob
@@ -247,7 +248,7 @@ spec:
               type: RuntimeDefault
           containers:
             - name: plan
-              image: ghcr.io/jregeimbal/trading-assistant:202610082205_28e08bf
+              image: ghcr.io/jregeimbal/trading-assistant:202610082214_3b56241
               # Refreshes prices for current members, records fills, plans tomorrow's orders.
               args: ["agent", "plan"]
               envFrom:
@@ -309,9 +310,70 @@ spec:
               type: RuntimeDefault
           containers:
             - name: execute
-              image: ghcr.io/jregeimbal/trading-assistant:202610082205_28e08bf
+              image: ghcr.io/jregeimbal/trading-assistant:202610082214_3b56241
               # Submits planned orders for accounts with auto-submit on, then records fills.
               args: ["agent", "execute"]
+              envFrom:
+                - secretRef:
+                    name: trading-assistant-secrets
+              resources:
+                requests:
+                  cpu: 100m
+                  memory: 256Mi
+                limits:
+                  memory: 768Mi
+              securityContext:
+                allowPrivilegeEscalation: false
+                readOnlyRootFilesystem: true
+                capabilities:
+                  drop: ["ALL"]
+              volumeMounts:
+                - name: tmp
+                  mountPath: /tmp
+          volumes:
+            - name: tmp
+              emptyDir: {}
+
+---
+# Morning sells for accounts set to sell at the open (account setting "Sells submit at");
+# accounts selling at the close are skipped. Buys stay with the 3:50 pm job above.
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: trading-agent-execute-open
+  namespace: trading-assistant
+spec:
+  schedule: "40 9 * * 1-5"
+  timeZone: America/New_York
+  concurrencyPolicy: Forbid
+  # Skip rather than sell late in the morning if the job can't start within 5 minutes.
+  startingDeadlineSeconds: 300
+  successfulJobsHistoryLimit: 5
+  failedJobsHistoryLimit: 5
+  jobTemplate:
+    spec:
+      backoffLimit: 0  # never retry order submission blindly
+      activeDeadlineSeconds: 480
+      template:
+        metadata:
+          labels:
+            app.kubernetes.io/name: trading-agent
+            app.kubernetes.io/component: execute-open
+        spec:
+          restartPolicy: Never
+          imagePullSecrets:
+            - name: ghcr-pull
+          securityContext:
+            runAsUser: 10001
+            runAsGroup: 10001
+            runAsNonRoot: true
+            seccompProfile:
+              type: RuntimeDefault
+          containers:
+            - name: execute-open
+              image: ghcr.io/jregeimbal/trading-assistant:202610082214_3b56241
+              # Submits planned sells only, then records fills.
+              args: ["agent", "execute", "--sells-only"]
               envFrom:
                 - secretRef:
                     name: trading-assistant-secrets
@@ -369,7 +431,7 @@ spec:
               type: RuntimeDefault
           containers:
             - name: reference
-              image: ghcr.io/jregeimbal/trading-assistant:202610082205_28e08bf
+              image: ghcr.io/jregeimbal/trading-assistant:202610082214_3b56241
               command: ["sh", "-c", "ta data universe && ta data sectors"]
               envFrom:
                 - secretRef:

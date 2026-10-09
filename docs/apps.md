@@ -129,6 +129,7 @@ Nothing outstanding — `API_SERVER_KEY` and `HERMES_DASHBOARD_SESSION_TOKEN` ar
 | `trading-assistant` | Service (Tailscale LB) | Tailnet only: `trading-assistant.<tailnet>.ts.net`, plus an HTTP Basic login on every page and API route (user `jon`). Only `/healthz` is open, for probes. The Agents tab can submit orders. |
 | `trading-agent-plan` | CronJob, weekdays 18:15 ET | Refreshes prices (last 45 days, plus full history only for tickers whose dividend/split adjustments changed), records fills, plans the next session's orders. A few minutes. |
 | `trading-agent-execute` | CronJob, weekdays 15:50 ET | Submits planned orders as market orders before the 4 pm close. Skipped if it can't start within 5 minutes; never retried. |
+| `trading-agent-execute-open` | CronJob, weekdays 9:40 ET | Submits only the planned sells, for accounts whose "Sells submit at" setting is the open; their buys still go in at 15:50. Same skip/no-retry rules. |
 | `trading-data-reference` | CronJob, 1st of month 07:00 ET | S&P 500 membership history and sector classifications |
 
 All containers run as non-root with a read-only root filesystem, except Postgres (UID 999, writable data dir). Jobs rebuild their price cache from Postgres in an `emptyDir`.
@@ -142,7 +143,7 @@ All containers run as non-root with a read-only root filesystem, except Postgres
 
 - **Run a job now:** `kubectl -n trading-assistant create job --from=cronjob/trading-agent-plan plan-manual-$(date +%s)`
 - **Logs:** `kubectl -n trading-assistant logs job/<name>`
-- **Pause trading:** `kubectl -n trading-assistant patch cronjob trading-agent-execute -p '{"spec":{"suspend":true}}'`. This won't survive the next Flux sync, so for a lasting pause set `suspend: true` in the manifest, or turn off auto-submit for the account in the Agents tab.
+- **Pause trading:** `kubectl -n trading-assistant patch cronjob trading-agent-execute -p '{"spec":{"suspend":true}}'` (and the same for `trading-agent-execute-open`). This won't survive the next Flux sync, so for a lasting pause set `suspend: true` in the manifest, or turn off auto-submit for the account in the Agents tab.
 - **Upgrade:** bump the image tag on all four containers in `flux/apps/trading-assistant.yaml`.
 - **Change the UI password:** re-seal `trading-assistant-secrets` with a new `TA_AUTH_PASSWORD`, keeping the other keys (`kubectl get secret` then `kubeseal`), then restart `trading-assistant-web`.
 
