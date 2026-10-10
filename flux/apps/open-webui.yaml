@@ -23,8 +23,7 @@ spec:
       repository: ghcr.io/open-webui/open-webui
       tag: main
     service:
-      type: LoadBalancer
-      loadBalancerClass: tailscale
+      type: ClusterIP  # exposed through the Tailscale Ingress below (HTTPS)
       ports:
         - port: 80
           targetPort: 8080
@@ -59,7 +58,7 @@ spec:
         scopes: openid email profile
     extraEnvVars:
       - name: OPENID_REDIRECT_URI
-        value: http://open-webui-open-webui.hartley-gray.ts.net/oauth/oidc/callback
+        value: https://open-webui.hartley-gray.ts.net/oauth/oidc/callback
     env:
       WEBUI_DEFAULT_OPENAI_MODEL: "meta-llama/llama-3.1-8b-instruct:latest"
   install:
@@ -69,3 +68,20 @@ spec:
     cleanupOnFail: true
     remediation:
       retries: 3
+---
+# Tailnet only, with a Let's Encrypt cert issued by Tailscale: https://open-webui.hartley-gray.ts.net
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: open-webui
+  namespace: open-webui
+spec:
+  ingressClassName: tailscale
+  defaultBackend:
+    service:
+      name: open-webui
+      port:
+        number: 80
+  tls:
+    - hosts:
+        - open-webui

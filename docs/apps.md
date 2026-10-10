@@ -197,7 +197,7 @@ Since 2025.10, Authentik no longer needs Redis.
 ### Components
 
 - Open WebUI web interface (ghcr.io/open-webui/open-webui)
-- Exposed via LoadBalancer with `tailscale` class → accessible on Tailnet
+- Exposed through a Tailscale Ingress at `https://open-webui.<tailnet>.ts.net` (Service is ClusterIP)
 - Default model: `meta-llama/llama-3.1-8b-instruct:latest`
 
 ### API Configuration
@@ -236,7 +236,7 @@ Since 2025.10, Authentik no longer needs Redis.
 
 - **Storage:** 5Gi Longhorn
 - **Admin password:** admin (change in production)
-- **Access:** LoadBalancer with `tailscale` class → accessible on Tailnet
+- **Access:** Tailscale Ingress at `https://grafana.<tailnet>.ts.net` (Service is ClusterIP)
 - **Data source:** Prometheus (`http://prometheus-server.monitoring.svc.cluster.local`)
 
 ### Custom Dashboards
@@ -252,6 +252,6 @@ Custom node dashboard available at `assets/grafana-dashboards/nodes.json`.
 | Hermes (jon) | jon-agent  | 5Gi Longhorn| ClusterIP  | from git      |
 | Hermes (ana) | ana-agent  | 5Gi Longhorn| ClusterIP  | from git      |
 | Hermes (wander) | wander-agent | 30Gi Longhorn| ClusterIP  | from git   |
-| Open WebUI | open-webui  | 10Gi Longhorn| Tailscale LB | 14.6.0      |
+| Open WebUI | open-webui  | 10Gi Longhorn| Tailscale Ingress (HTTPS) | 14.6.0      |
 | Prometheus | monitoring  | 5Gi Longhorn| ClusterIP  | 29.8.0        |
-| Grafana    | monitoring  | 5Gi Longhorn| Tailscale LB | 10.5.15     |
+| Grafana    | monitoring  | 5Gi Longhorn| Tailscale Ingress (HTTPS) | 10.5.15     |

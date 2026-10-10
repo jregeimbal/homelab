@@ -66,8 +66,7 @@ spec:
       storageClassName: longhorn
       size: 5Gi
     service:
-      type: LoadBalancer
-      loadBalancerClass: tailscale
+      type: ClusterIP  # exposed through the Tailscale Ingress below (HTTPS)
       ports:
         - port: 80
           targetPort: 3000
@@ -90,7 +89,7 @@ spec:
           key: client-secret
     grafana.ini:
       server:
-        root_url: http://monitoring-grafana.hartley-gray.ts.net
+        root_url: https://grafana.hartley-gray.ts.net
       auth:
         signout_redirect_url: https://authentik.hartley-gray.ts.net/application/o/grafana/end-session/
       auth.generic_oauth:
@@ -114,3 +113,20 @@ spec:
     cleanupOnFail: true
     remediation:
       retries: 3
+---
+# Tailnet only, with a Let's Encrypt cert issued by Tailscale: https://grafana.hartley-gray.ts.net
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: grafana
+  namespace: monitoring
+spec:
+  ingressClassName: tailscale
+  defaultBackend:
+    service:
+      name: grafana
+      port:
+        number: 80
+  tls:
+    - hosts:
+        - grafana
