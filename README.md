@@ -132,7 +132,7 @@ GitOps-managed Kubernetes cluster with Tailscale for external access and Longhor
 
 | Component      | Namespace      | Purpose                              |
 |---------------|----------------|--------------------------------------|
-| Longhorn      | longhorn-system| Distributed block storage            |
+| Longhorn      | longhorn-system| Distributed block storage (UI behind authentik: `https://longhorn.<tailnet>.ts.net`) |
 | MetalLB       | metallb-system | Layer 2 load balancer (fallback)     |
 | Tailscale     | tailscale      | External access via Tailnet          |
 | SealedSecrets | flux-system    | Encrypted secrets for Git            |

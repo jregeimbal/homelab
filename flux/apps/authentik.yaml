@@ -275,3 +275,61 @@ data:
           name: Open WebUI
           provider: !KeyOf open-webui-provider
           meta_launch_url: https://open-webui.hartley-gray.ts.net/
+  longhorn.yaml: |
+    # Longhorn's UI has no auth of its own: the embedded outpost (inside authentik-server) proxies it.
+    # The `longhorn` Tailscale Ingress below points at authentik-server; requests for that host are
+    # routed to this proxy provider, which requires an authentik Admins login before forwarding.
+    version: 1
+    metadata:
+      name: homelab-longhorn
+    entries:
+      - model: authentik_providers_proxy.proxyprovider
+        id: longhorn-provider
+        identifiers:
+          name: Longhorn
+        attrs:
+          authorization_flow: !Find [authentik_flows.flow, [slug, default-provider-authorization-implicit-consent]]
+          invalidation_flow: !Find [authentik_flows.flow, [slug, default-provider-invalidation-flow]]
+          mode: proxy
+          external_host: https://longhorn.hartley-gray.ts.net
+          internal_host: http://longhorn-frontend.longhorn-system.svc.cluster.local
+      - model: authentik_core.application
+        id: longhorn-app
+        identifiers:
+          slug: longhorn
+        attrs:
+          name: Longhorn
+          provider: !KeyOf longhorn-provider
+          meta_launch_url: https://longhorn.hartley-gray.ts.net/
+      # Storage admin UI (can delete volumes): only authentik Admins.
+      - model: authentik_policies.policybinding
+        identifiers:
+          target: !KeyOf longhorn-app
+          order: 0
+        attrs:
+          group: !Find [authentik_core.group, [name, authentik Admins]]
+      # Sets the embedded outpost's full provider list; add any future proxy providers here too.
+      - model: authentik_outposts.outpost
+        identifiers:
+          managed: goauthentik.io/outposts/embedded
+        attrs:
+          providers:
+            - !KeyOf longhorn-provider
+---
+# Longhorn UI behind authentik: Tailnet only, HTTPS at https://longhorn.hartley-gray.ts.net. Traffic goes
+# to authentik-server, whose embedded outpost matches the host to the Longhorn proxy provider.
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: longhorn
+  namespace: authentik
+spec:
+  ingressClassName: tailscale
+  defaultBackend:
+    service:
+      name: authentik-server
+      port:
+        number: 80
+  tls:
+    - hosts:
+        - longhorn

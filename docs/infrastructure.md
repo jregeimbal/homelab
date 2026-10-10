@@ -86,7 +86,7 @@ Installed but not actively used for production services. Tailscale Operator has 
 
 1. **Tailscale Operator** — Manages Tailscale nodes as Kubernetes resources
 2. **Tailscale Connector** (`tailscale-connector.yaml`) — Connects the cluster to the Tailnet
-3. **Longhorn Tailscale** (`longhorn-tailscale.yaml`) — Exposes Longhorn UI via Tailscale
+3. **Longhorn UI** — not exposed directly. The `longhorn` Tailscale Ingress (in `flux/apps/authentik.yaml`) serves `https://longhorn.<tailnet>.ts.net` through authentik's embedded outpost, which requires an `authentik Admins` login before it forwards to `longhorn-frontend`.
 
 ### External Access Pattern
 
