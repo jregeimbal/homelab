@@ -136,7 +136,7 @@ All containers run as non-root with a read-only root filesystem, except Postgres
 
 ### Secrets
 
-- `trading-assistant-secrets`: `POSTGRES_PASSWORD`, `TA_DATABASE_URL`, `TA_AUTH_PASSWORD` (web UI login; the plaintext was shared with Jon directly, not stored in the repo), `WEBULL_PAPER_APP_KEY`, `WEBULL_PAPER_APP_SECRET`. Live Webull keys (`WEBULL_APP_KEY` / `WEBULL_APP_SECRET`) are deliberately left out until a live account is added in the Agents tab.
+- `trading-assistant-secrets`: `POSTGRES_PASSWORD`, `TA_DATABASE_URL`, `TA_AUTH_PASSWORD` (web UI login; the plaintext was shared with Jon directly, not stored in the repo), `WEBULL_PAPER_APP_KEY`, `WEBULL_PAPER_APP_SECRET`, `TA_SECRET_KEY` (master key that encrypts API keys entered on an account in the Agents tab; they're stored encrypted in Postgres and never shown again). Live Webull keys (`WEBULL_APP_KEY` / `WEBULL_APP_SECRET`) are deliberately left out of the secret; a live account can take its keys in the Agents tab instead. If `TA_SECRET_KEY` is lost or changed, saved keys must be re-entered on each account (nothing else is affected).
 - `ghcr-pull`: docker-registry secret with a read:packages-only token. Create it with `deploy/seal-ghcr-pull-secret.sh` in the trading-assistant repo.
 
 ### Operations
