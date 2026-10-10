@@ -143,7 +143,7 @@ spec:
           type: RuntimeDefault
       containers:
         - name: web
-          image: ghcr.io/jregeimbal/trading-assistant:202610091706_2cfba4b
+          image: ghcr.io/jregeimbal/trading-assistant:202610100839_91cc542
           args: ["serve", "--host", "0.0.0.0", "--port", "8765", "--no-open"]
           env:
             # HTTP Basic login for the whole UI and API (password: TA_AUTH_PASSWORD in the
@@ -248,7 +248,7 @@ spec:
               type: RuntimeDefault
           containers:
             - name: plan
-              image: ghcr.io/jregeimbal/trading-assistant:202610091706_2cfba4b
+              image: ghcr.io/jregeimbal/trading-assistant:202610100839_91cc542
               # Refreshes prices for current members, records fills, plans tomorrow's orders.
               args: ["agent", "plan"]
               envFrom:
@@ -310,7 +310,7 @@ spec:
               type: RuntimeDefault
           containers:
             - name: execute
-              image: ghcr.io/jregeimbal/trading-assistant:202610091706_2cfba4b
+              image: ghcr.io/jregeimbal/trading-assistant:202610100839_91cc542
               # Submits planned orders for accounts with auto-submit on, then records fills.
               args: ["agent", "execute"]
               envFrom:
@@ -371,7 +371,7 @@ spec:
               type: RuntimeDefault
           containers:
             - name: execute-open
-              image: ghcr.io/jregeimbal/trading-assistant:202610091706_2cfba4b
+              image: ghcr.io/jregeimbal/trading-assistant:202610100839_91cc542
               # Submits planned sells only, then records fills.
               args: ["agent", "execute", "--sells-only"]
               envFrom:
@@ -431,7 +431,7 @@ spec:
               type: RuntimeDefault
           containers:
             - name: reference
-              image: ghcr.io/jregeimbal/trading-assistant:202610091706_2cfba4b
+              image: ghcr.io/jregeimbal/trading-assistant:202610100839_91cc542
               command: ["sh", "-c", "ta data universe && ta data sectors"]
               envFrom:
                 - secretRef:
