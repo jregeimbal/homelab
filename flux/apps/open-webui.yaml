@@ -42,6 +42,24 @@ spec:
     extraEnvFrom:
       - secretRef:
           name: open-webui-secret
+    # SSO through authentik (OIDC). Accounts are keyed to the OIDC subject, not email: merging by email
+    # would let anyone who can change their authentik email take over another account (authentik always
+    # sends email_verified=false). The first account becomes admin; later ones land as `pending`.
+    sso:
+      enabled: true
+      enableSignup: true
+      mergeAccountsByEmail: false
+      oidc:
+        enabled: true
+        providerName: authentik
+        providerUrl: https://authentik.hartley-gray.ts.net/application/o/open-webui/.well-known/openid-configuration
+        clientId: open-webui
+        clientExistingSecret: open-webui-oidc
+        clientExistingSecretKey: client-secret
+        scopes: openid email profile
+    extraEnvVars:
+      - name: OPENID_REDIRECT_URI
+        value: http://open-webui-open-webui.hartley-gray.ts.net/oauth/oidc/callback
     env:
       WEBUI_DEFAULT_OPENAI_MODEL: "meta-llama/llama-3.1-8b-instruct:latest"
   install:

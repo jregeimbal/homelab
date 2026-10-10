@@ -81,6 +81,32 @@ spec:
             access: proxy
             isDefault: true
     fullnameOverride: grafana
+    # SSO through authentik (OIDC). Members of `authentik Admins` get the Grafana Admin role, everyone
+    # else Viewer. The local admin login stays enabled as a fallback.
+    envValueFrom:
+      GF_AUTH_GENERIC_OAUTH_CLIENT_SECRET:
+        secretKeyRef:
+          name: grafana-oidc
+          key: client-secret
+    grafana.ini:
+      server:
+        root_url: http://monitoring-grafana.hartley-gray.ts.net
+      auth:
+        signout_redirect_url: https://authentik.hartley-gray.ts.net/application/o/grafana/end-session/
+      auth.generic_oauth:
+        enabled: true
+        name: authentik
+        client_id: grafana
+        scopes: openid profile email
+        auth_url: https://authentik.hartley-gray.ts.net/application/o/authorize/
+        token_url: https://authentik.hartley-gray.ts.net/application/o/token/
+        api_url: https://authentik.hartley-gray.ts.net/application/o/userinfo/
+        use_pkce: true
+        allow_sign_up: true
+        login_attribute_path: preferred_username
+        name_attribute_path: name
+        email_attribute_path: email
+        role_attribute_path: contains(groups, 'authentik Admins') && 'Admin' || 'Viewer'
   install:
     remediation:
       retries: 3
