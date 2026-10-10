@@ -228,7 +228,7 @@ data:
           signing_key: !Find [authentik_crypto.certificatekeypair, [name, authentik Self-signed Certificate]]
           redirect_uris:
             - matching_mode: strict
-              url: http://monitoring-grafana.hartley-gray.ts.net/login/generic_oauth
+              url: https://grafana.hartley-gray.ts.net/login/generic_oauth
               redirect_uri_type: authorization
           property_mappings:
             - !Find [authentik_providers_oauth2.scopemapping, [managed, goauthentik.io/providers/oauth2/scope-openid]]
@@ -240,7 +240,7 @@ data:
         attrs:
           name: Grafana
           provider: !KeyOf grafana-provider
-          meta_launch_url: http://monitoring-grafana.hartley-gray.ts.net/
+          meta_launch_url: https://grafana.hartley-gray.ts.net/
       - model: authentik_providers_oauth2.oauth2provider
         id: open-webui-provider
         identifiers:
@@ -254,7 +254,7 @@ data:
           signing_key: !Find [authentik_crypto.certificatekeypair, [name, authentik Self-signed Certificate]]
           redirect_uris:
             - matching_mode: strict
-              url: http://open-webui-open-webui.hartley-gray.ts.net/oauth/oidc/callback
+              url: https://open-webui.hartley-gray.ts.net/oauth/oidc/callback
               redirect_uri_type: authorization
           property_mappings:
             - !Find [authentik_providers_oauth2.scopemapping, [managed, goauthentik.io/providers/oauth2/scope-openid]]
@@ -266,4 +266,4 @@ data:
         attrs:
           name: Open WebUI
           provider: !KeyOf open-webui-provider
-          meta_launch_url: http://open-webui-open-webui.hartley-gray.ts.net/
+          meta_launch_url: https://open-webui.hartley-gray.ts.net/

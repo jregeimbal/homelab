@@ -120,9 +120,9 @@ GitOps-managed Kubernetes cluster with Tailscale for external access and Longhor
 | Hermes (jon) | jon-agent  | AI agent with WhatsApp/Telegram/Discord integrations | ClusterIP    |
 | Hermes (ana) | ana-agent  | AI agent (second instance)                     | ClusterIP      |
 | Hermes (wander) | wander-agent | Personal travel-planning agent, WhatsApp only | ClusterIP   |
-| Open WebUI | open-webui  | Web UI for LLM interaction, backed by Hermes   | Tailscale      |
+| Open WebUI | open-webui  | Web UI for LLM interaction, backed by Hermes   | Tailscale Ingress (HTTPS) |
 | Prometheus | monitoring  | Metrics collection and storage                 | ClusterIP      |
-| Grafana    | monitoring  | Metrics visualization dashboard                | Tailscale      |
+| Grafana    | monitoring  | Metrics visualization dashboard                | Tailscale Ingress (HTTPS) |
 | Authentik  | authentik   | Identity provider (SSO/OIDC) for homelab apps  | Tailscale Ingress (HTTPS) |
 | Trading Assistant | trading-assistant | Strategy research UI and daily trading agent (Webull paper) | Tailscale LB |
 
