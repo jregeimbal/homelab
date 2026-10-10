@@ -175,6 +175,13 @@ Since 2025.10, Authentik no longer needs Redis.
 - **First login:** user `akadmin`, password from `kubectl -n authentik get secret authentik-secrets -o jsonpath='{.data.AUTHENTIK_BOOTSTRAP_PASSWORD}' | base64 -d`. Then create your own admin user, add it to `authentik Admins`, and deactivate `akadmin`.
 - **Add an app (OIDC):** Applications → Create with provider. Use the redirect URI of the app's Tailscale hostname. The issuer is `https://authentik.<tailnet>.ts.net/application/o/<slug>/`.
 - **Upgrade:** bump `version` in the HelmRelease. Upgrade one minor release at a time (for example 2026.8 → 2026.10), and back up Postgres first: `kubectl -n authentik exec authentik-postgres-0 -- pg_dump -U authentik authentik > authentik.sql`.
+- **Fresh install must migrate in one uninterrupted run.** If the first migration run on an empty database is killed partway, the next start runs the legacy `tenant_to_brand` system migration. That migration rewrites the partial history (`authentik_tenants` → `authentik_brands`), and every later start fails with `InconsistentMigrationHistory`. On these nodes the first run takes more than 10 minutes, which is why the HelmRelease has a 20m timeout and a 30m `progressDeadlineSeconds`. To recover a fresh install that never came up:
+  1. `flux suspend hr authentik -n authentik`, then scale `authentik-server` and `authentik-worker` to 0. Wait until their pods are gone, or they'll reconnect and race the reset.
+  2. Drop and recreate the `authentik` database.
+  3. Run the migrations alone in a one-off pod: the server image with the same env, `command: ["python", "-m", "lifecycle.migrate"]`, `workingDir: /`.
+  4. When it succeeds, scale the server and worker back to 1 and `flux resume hr authentik -n authentik`.
+
+  Never drop the database of an install that has users. This recovery is only for an install that never finished its first start.
 
 ---
 
