@@ -42,12 +42,13 @@ spec:
     extraEnvFrom:
       - secretRef:
           name: open-webui-secret
-    # SSO through authentik (OIDC). New SSO users land as `pending` until an admin approves them;
-    # an SSO login whose email matches an existing account signs into that account.
+    # SSO through authentik (OIDC). Accounts are keyed to the OIDC subject, not email: merging by email
+    # would let anyone who can change their authentik email take over another account (authentik always
+    # sends email_verified=false). The first account becomes admin; later ones land as `pending`.
     sso:
       enabled: true
       enableSignup: true
-      mergeAccountsByEmail: true
+      mergeAccountsByEmail: false
       oidc:
         enabled: true
         providerName: authentik
