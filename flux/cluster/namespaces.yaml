@@ -43,3 +43,8 @@ apiVersion: v1
 kind: Namespace
 metadata:
   name: trading-assistant
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: authentik

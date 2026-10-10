@@ -149,6 +149,35 @@ All containers run as non-root with a read-only root filesystem, except Postgres
 
 ---
 
+## Authentik (authentik namespace)
+
+**Manifests:** `flux/apps/authentik.yaml`, `flux/apps/authentik-secrets.sealedsecret.yaml`
+**Chart source:** `authentik` HelmRepository (charts.goauthentik.io), version 2026.8.3
+**Purpose:** Identity provider (SSO via OIDC, SAML, LDAP, and forward auth) for the homelab apps
+
+### Components
+
+| Component | Kind | Details |
+|---|---|---|
+| `authentik-postgres` | StatefulSet + Service | Postgres 18, 5Gi Longhorn at `/var/lib/postgresql` (the Postgres 18 volume path). The chart's bundled Bitnami Postgres is disabled. |
+| `authentik-server` | Deployment (chart) | Web UI, API, and the embedded outpost. Memory limit 1.5Gi. |
+| `authentik-worker` | Deployment (chart) | Background tasks, blueprints, and managed outposts. Memory limit 1.5Gi. |
+| `authentik` | Ingress (`tailscale` class) | Tailnet only, with HTTPS: `https://authentik.<tailnet>.ts.net`. Tailscale issues the Let's Encrypt cert, which OIDC redirects and secure cookies need. |
+
+Since 2025.10, Authentik no longer needs Redis.
+
+### Secrets
+
+- `authentik-secrets`: `AUTHENTIK_SECRET_KEY` (signs cookies and derives unique user IDs; **never change it** after the first install), `AUTHENTIK_POSTGRESQL__PASSWORD` (Postgres reads the same key), `AUTHENTIK_BOOTSTRAP_PASSWORD` (the first-run password for `akadmin`; it's read only when the database is empty).
+
+### Operations
+
+- **First login:** user `akadmin`, password from `kubectl -n authentik get secret authentik-secrets -o jsonpath='{.data.AUTHENTIK_BOOTSTRAP_PASSWORD}' | base64 -d`. Then create your own admin user, add it to `authentik Admins`, and deactivate `akadmin`.
+- **Add an app (OIDC):** Applications → Create with provider. Use the redirect URI of the app's Tailscale hostname. The issuer is `https://authentik.<tailnet>.ts.net/application/o/<slug>/`.
+- **Upgrade:** bump `version` in the HelmRelease. Upgrade one minor release at a time (for example 2026.8 → 2026.10), and back up Postgres first: `kubectl -n authentik exec authentik-postgres-0 -- pg_dump -U authentik authentik > authentik.sql`.
+
+---
+
 ## Open WebUI (open-webui namespace)
 
 **HelmRelease:** `open-webui` in `open-webui` namespace  

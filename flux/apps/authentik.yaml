@@ -1,0 +1,177 @@
+---
+# Authentik identity provider (goauthentik.io): SSO/OIDC for the homelab apps.
+# Our own Postgres 18 (the chart's bundled Bitnami Postgres is disabled), the authentik server and
+# worker from the official chart, and a Tailscale Ingress so it gets a real TLS cert at
+# https://authentik.hartley-gray.ts.net (OIDC redirects and secure cookies need HTTPS).
+# Secrets: authentik-secrets (AUTHENTIK_SECRET_KEY, AUTHENTIK_POSTGRESQL__PASSWORD, and
+# AUTHENTIK_BOOTSTRAP_PASSWORD, the first-run password for the `akadmin` user).
+
+# ---------------------------------------------------------------- Postgres
+apiVersion: v1
+kind: Service
+metadata:
+  name: authentik-postgres
+  namespace: authentik
+spec:
+  selector:
+    app.kubernetes.io/name: authentik-postgres
+  ports:
+    - name: postgres
+      port: 5432
+      targetPort: 5432
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: authentik-postgres
+  namespace: authentik
+spec:
+  serviceName: authentik-postgres
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: authentik-postgres
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: authentik-postgres
+    spec:
+      securityContext:
+        runAsUser: 999
+        runAsGroup: 999
+        fsGroup: 999
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: postgres
+          image: postgres:18
+          args:
+            - -c
+            - shared_buffers=128MB
+          env:
+            - name: POSTGRES_USER
+              value: authentik
+            - name: POSTGRES_DB
+              value: authentik
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: authentik-secrets
+                  key: AUTHENTIK_POSTGRESQL__PASSWORD
+          ports:
+            - name: postgres
+              containerPort: 5432
+          readinessProbe:
+            exec:
+              command: ["pg_isready", "-U", "authentik", "-d", "authentik"]
+            periodSeconds: 10
+          livenessProbe:
+            exec:
+              command: ["pg_isready", "-U", "authentik", "-d", "authentik"]
+            initialDelaySeconds: 30
+            periodSeconds: 30
+          resources:
+            requests:
+              cpu: 50m
+              memory: 256Mi
+            limits:
+              memory: 768Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+          volumeMounts:
+            # Postgres 18+ images declare VOLUME /var/lib/postgresql (data lives in 18/docker under it);
+            # mounting .../data instead would silently write to an anonymous volume.
+            - name: data
+              mountPath: /var/lib/postgresql
+            - name: run
+              mountPath: /var/run/postgresql
+      volumes:
+        - name: run
+          emptyDir: {}
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        storageClassName: longhorn
+        resources:
+          requests:
+            storage: 5Gi
+
+# ---------------------------------------------------------------- authentik
+---
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: authentik
+  namespace: authentik
+spec:
+  interval: 5m
+  chart:
+    spec:
+      chart: authentik
+      version: "2026.8.3"
+      sourceRef:
+        kind: HelmRepository
+        name: authentik
+        namespace: flux-system
+      interval: 5m
+  releaseName: authentik
+  targetNamespace: authentik
+  values:
+    authentik:
+      # Secret values come from authentik-secrets (envFrom on server and worker); with existingSecret
+      # set, the chart ignores authentik.* values, so the non-secret config lives in global.env.
+      existingSecret:
+        secretName: authentik-secrets
+    global:
+      env:
+        - name: AUTHENTIK_POSTGRESQL__HOST
+          value: authentik-postgres.authentik.svc.cluster.local
+        - name: AUTHENTIK_POSTGRESQL__NAME
+          value: authentik
+        - name: AUTHENTIK_POSTGRESQL__USER
+          value: authentik
+        - name: AUTHENTIK_ERROR_REPORTING__ENABLED
+          value: "false"
+    server:
+      resources:
+        requests:
+          cpu: 100m
+          memory: 512Mi
+        limits:
+          memory: 1536Mi
+    worker:
+      resources:
+        requests:
+          cpu: 100m
+          memory: 384Mi
+        limits:
+          memory: 1536Mi
+    postgresql:
+      enabled: false
+  install:
+    remediation:
+      retries: 3
+  upgrade:
+    cleanupOnFail: true
+    remediation:
+      retries: 3
+---
+# Tailnet only, with a Let's Encrypt cert issued by Tailscale: https://authentik.hartley-gray.ts.net
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: authentik
+  namespace: authentik
+spec:
+  ingressClassName: tailscale
+  defaultBackend:
+    service:
+      name: authentik-server
+      port:
+        number: 80
+  tls:
+    - hosts:
+        - authentik
