@@ -108,6 +108,9 @@ metadata:
   namespace: authentik
 spec:
   interval: 5m
+  # First install and upgrades run Django migrations before the pods turn ready, which takes well
+  # over Helm's default 5m on the SO Quartz nodes; a timeout uninstalls mid-migration.
+  timeout: 20m
   chart:
     spec:
       chart: authentik
@@ -136,6 +139,8 @@ spec:
         - name: AUTHENTIK_ERROR_REPORTING__ENABLED
           value: "false"
     server:
+      startupProbe:
+        failureThreshold: 120  # 20m at the 10s period, to match the Helm timeout
       resources:
         requests:
           cpu: 100m
@@ -143,6 +148,8 @@ spec:
         limits:
           memory: 1536Mi
     worker:
+      startupProbe:
+        failureThreshold: 120  # 20m at the 10s period, to match the Helm timeout
       resources:
         requests:
           cpu: 100m
