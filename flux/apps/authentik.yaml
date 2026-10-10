@@ -223,6 +223,10 @@ data:
           authorization_flow: !Find [authentik_flows.flow, [slug, default-provider-authorization-implicit-consent]]
           invalidation_flow: !Find [authentik_flows.flow, [slug, default-provider-invalidation-flow]]
           client_type: confidential
+          # Required: an empty list allows no grants (the admin UI fills in defaults, blueprints don't).
+          grant_types:
+            - authorization_code
+            - refresh_token
           client_id: grafana
           client_secret: !Env GRAFANA_OIDC_CLIENT_SECRET
           signing_key: !Find [authentik_crypto.certificatekeypair, [name, authentik Self-signed Certificate]]
@@ -249,6 +253,10 @@ data:
           authorization_flow: !Find [authentik_flows.flow, [slug, default-provider-authorization-implicit-consent]]
           invalidation_flow: !Find [authentik_flows.flow, [slug, default-provider-invalidation-flow]]
           client_type: confidential
+          # Required: an empty list allows no grants (the admin UI fills in defaults, blueprints don't).
+          grant_types:
+            - authorization_code
+            - refresh_token
           client_id: open-webui
           client_secret: !Env OPEN_WEBUI_OIDC_CLIENT_SECRET
           signing_key: !Find [authentik_crypto.certificatekeypair, [name, authentik Self-signed Certificate]]
