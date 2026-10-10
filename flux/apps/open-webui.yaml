@@ -42,6 +42,23 @@ spec:
     extraEnvFrom:
       - secretRef:
           name: open-webui-secret
+    # SSO through authentik (OIDC). New SSO users land as `pending` until an admin approves them;
+    # an SSO login whose email matches an existing account signs into that account.
+    sso:
+      enabled: true
+      enableSignup: true
+      mergeAccountsByEmail: true
+      oidc:
+        enabled: true
+        providerName: authentik
+        providerUrl: https://authentik.hartley-gray.ts.net/application/o/open-webui/.well-known/openid-configuration
+        clientId: open-webui
+        clientExistingSecret: open-webui-oidc
+        clientExistingSecretKey: client-secret
+        scopes: openid email profile
+    extraEnvVars:
+      - name: OPENID_REDIRECT_URI
+        value: http://open-webui-open-webui.hartley-gray.ts.net/oauth/oidc/callback
     env:
       WEBUI_DEFAULT_OPENAI_MODEL: "meta-llama/llama-3.1-8b-instruct:latest"
   install:

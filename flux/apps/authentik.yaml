@@ -148,6 +148,9 @@ spec:
         limits:
           memory: 1536Mi
     worker:
+      envFrom:
+        - secretRef:
+            name: authentik-oidc-clients  # client secrets for the SSO blueprint (!Env)
       startupProbe:
         failureThreshold: 120  # 20m at the 10s period, to match the Helm timeout
       resources:
@@ -156,6 +159,9 @@ spec:
           memory: 384Mi
         limits:
           memory: 1536Mi
+    blueprints:
+      configMaps:
+        - authentik-blueprint-sso
     postgresql:
       enabled: false
   # The chart doesn't expose progressDeadlineSeconds. At the default 600s, Helm marks the Deployments
@@ -195,3 +201,69 @@ spec:
   tls:
     - hosts:
         - authentik
+---
+# SSO apps, applied by the authentik worker as a blueprint (re-applied on change). Client secrets come
+# from authentik-oidc-clients via !Env; the same values are sealed into each app's namespace.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: authentik-blueprint-sso
+  namespace: authentik
+data:
+  sso-apps.yaml: |
+    version: 1
+    metadata:
+      name: homelab-sso-apps
+    entries:
+      - model: authentik_providers_oauth2.oauth2provider
+        id: grafana-provider
+        identifiers:
+          name: Grafana
+        attrs:
+          authorization_flow: !Find [authentik_flows.flow, [slug, default-provider-authorization-implicit-consent]]
+          invalidation_flow: !Find [authentik_flows.flow, [slug, default-provider-invalidation-flow]]
+          client_type: confidential
+          client_id: grafana
+          client_secret: !Env GRAFANA_OIDC_CLIENT_SECRET
+          signing_key: !Find [authentik_crypto.certificatekeypair, [name, authentik Self-signed Certificate]]
+          redirect_uris:
+            - matching_mode: strict
+              url: http://monitoring-grafana.hartley-gray.ts.net/login/generic_oauth
+              redirect_uri_type: authorization
+          property_mappings:
+            - !Find [authentik_providers_oauth2.scopemapping, [managed, goauthentik.io/providers/oauth2/scope-openid]]
+            - !Find [authentik_providers_oauth2.scopemapping, [managed, goauthentik.io/providers/oauth2/scope-email]]
+            - !Find [authentik_providers_oauth2.scopemapping, [managed, goauthentik.io/providers/oauth2/scope-profile]]
+      - model: authentik_core.application
+        identifiers:
+          slug: grafana
+        attrs:
+          name: Grafana
+          provider: !KeyOf grafana-provider
+          meta_launch_url: http://monitoring-grafana.hartley-gray.ts.net/
+      - model: authentik_providers_oauth2.oauth2provider
+        id: open-webui-provider
+        identifiers:
+          name: Open WebUI
+        attrs:
+          authorization_flow: !Find [authentik_flows.flow, [slug, default-provider-authorization-implicit-consent]]
+          invalidation_flow: !Find [authentik_flows.flow, [slug, default-provider-invalidation-flow]]
+          client_type: confidential
+          client_id: open-webui
+          client_secret: !Env OPEN_WEBUI_OIDC_CLIENT_SECRET
+          signing_key: !Find [authentik_crypto.certificatekeypair, [name, authentik Self-signed Certificate]]
+          redirect_uris:
+            - matching_mode: strict
+              url: http://open-webui-open-webui.hartley-gray.ts.net/oauth/oidc/callback
+              redirect_uri_type: authorization
+          property_mappings:
+            - !Find [authentik_providers_oauth2.scopemapping, [managed, goauthentik.io/providers/oauth2/scope-openid]]
+            - !Find [authentik_providers_oauth2.scopemapping, [managed, goauthentik.io/providers/oauth2/scope-email]]
+            - !Find [authentik_providers_oauth2.scopemapping, [managed, goauthentik.io/providers/oauth2/scope-profile]]
+      - model: authentik_core.application
+        identifiers:
+          slug: open-webui
+        attrs:
+          name: Open WebUI
+          provider: !KeyOf open-webui-provider
+          meta_launch_url: http://open-webui-open-webui.hartley-gray.ts.net/
