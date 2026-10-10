@@ -198,7 +198,6 @@ flux/
 │   ├── metallb.yaml            # MetalLB (fallback)
 │   ├── tailscale.yaml          # Tailscale operator
 │   ├── tailscale-connector.yaml# Tailscale cluster egress
-│   ├── longhorn-tailscale.yaml # Longhorn Tailscale exposure
 │   └── sealed-secrets.yaml     # SealedSecrets controller
 └── apps/
     ├── kustomization.yaml      # Apps entry point
