@@ -158,6 +158,19 @@ spec:
           memory: 1536Mi
     postgresql:
       enabled: false
+  # The chart doesn't expose progressDeadlineSeconds. At the default 600s, Helm marks the Deployments
+  # Failed while migrations are still running, ignoring the 20m timeout, and the uninstall that follows
+  # leaves the migration history inconsistent.
+  postRenderers:
+    - kustomize:
+        patches:
+          - target:
+              kind: Deployment
+              name: authentik-(server|worker)
+            patch: |
+              - op: add
+                path: /spec/progressDeadlineSeconds
+                value: 1800
   install:
     remediation:
       retries: 3
