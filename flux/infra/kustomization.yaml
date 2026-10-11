@@ -6,5 +6,4 @@ resources:
   - metallb.yaml
   - tailscale.yaml
   - tailscale-connector.yaml
-  - longhorn-tailscale.yaml
   - node-local-dns.yaml

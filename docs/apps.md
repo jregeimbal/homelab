@@ -8,7 +8,7 @@
 
 ### Components
 
-The Hermes Helm chart deploys a single pod with 3 containers:
+The Hermes Helm chart deploys a single pod with 2 containers:
 
 1. **hermes** (main) — Hermes Agent runtime
    - Image: `nousresearch/hermes-agent:main`
@@ -20,9 +20,7 @@ The Hermes Helm chart deploys a single pod with 3 containers:
    - CDP endpoint: `ws://127.0.0.1:3000/`
    - Resources: 2 CPU / 4Gi memory limit
 
-3. **pip-install** (init container) — Dependency installation
-   - Installs `discord.py`, `python-telegram-bot`, `faster-whisper` to `/opt/data/py-global`
-   - Ensures packages are available on persistent volume
+**Python dependencies** (not a container) — core packages (discord.py, python-telegram-bot, python-dotenv) live in the image's sealed venv `/opt/hermes/.venv`; optional extras (faster-whisper, firecrawl, …) are lazy-installed by hermes into `/opt/data/lazy-packages` (appended to `sys.path`; the venv always wins)
 
 ### Integrations
 
@@ -70,7 +68,7 @@ Referenced from `hermes-jon-secrets` SealedSecret. Contains:
 - **No Discord or Telegram** — only WhatsApp integration (`"15404194480"`)
 - **SealedSecret:** `hermes-ana-secrets` (API server key)
 - **WhatsApp reply prefix:** `"🤖 *Ana's Agent*\n──────\n"`
-- **No pip-install init container for telegram** — only installs `discord.py` and `faster-whisper` (telegram package not needed)
+- **Python dependencies:** same as jon-agent — sealed venv in the image plus hermes-managed extras (e.g. `faster-whisper`) lazy-installed into `/opt/data/lazy-packages`
 - **Data volume claim name:** `hermes-ana-data` (vs `hermes-hermes-agent-data` for jon)
 - **fullnameOverride:** `hermes-ana` (vs default `hermes` for jon)
 - **Base URL:** Same local model endpoint (`http://jonathans-mac-studio:1234/v1`)
@@ -115,6 +113,82 @@ Nothing outstanding — `API_SERVER_KEY` and `HERMES_DASHBOARD_SESSION_TOKEN` ar
 
 ---
 
+## Trading Assistant (trading-assistant namespace)
+
+**Source:** github.com/jregeimbal/trading-assistant (private)
+**Image:** `ghcr.io/jregeimbal/trading-assistant:<datetime_sha>` (private; pulled with the `ghcr-pull` SealedSecret), built by that repo's CI for amd64 and arm64
+**Manifests:** `flux/apps/trading-assistant.yaml`
+**Purpose:** Jon's S&P 500 strategy research (backtests, strategy builder, reports) and the daily trading agent that runs strategies in brokerage accounts (Webull paper now; live and IRA accounts later)
+
+### Components
+
+| Component | Kind | Details |
+|---|---|---|
+| `trading-postgres` | StatefulSet + Service | Postgres 18, 10Gi Longhorn at `/var/lib/postgresql` (the Postgres 18 volume path). Prices, strategies, backtest runs, accounts, agent orders. |
+| `trading-assistant-web` | Deployment | `ta serve`: strategy builder, Runs, Agents tab, reports. 5Gi Longhorn at `/data` (price cache, backtest artifacts). Memory limit 3Gi (full backtests peak ~1.6 GB). |
+| `trading-assistant` | Service + Tailscale Ingress | Tailnet only, HTTPS: `https://trading.<tailnet>.ts.net`. Single sign-on through authentik (provider/app `trading-assistant`); roles from authentik groups: `trading-viewers` read, `trading-traders` also plan/submit orders, cash flows and backtests, `trading-admins` also manage accounts and API keys. Live-account changes ask for a fresh authentik sign-in (pop-up). Only `/healthz` is open, for probes. Rollback: `TA_AUTH_MODE=basic` uses the old HTTP Basic login (user `jon`, `TA_AUTH_PASSWORD` still sealed). |
+| `trading-agent-plan` | CronJob, weekdays 18:15 ET | Refreshes prices (last 45 days, plus full history only for tickers whose dividend/split adjustments changed), records fills, plans the next session's orders. A few minutes. |
+| `trading-agent-execute` | CronJob, weekdays 15:50 ET | Submits planned orders as market orders before the 4 pm close. Skipped if it can't start within 5 minutes; never retried. |
+| `trading-agent-execute-open` | CronJob, weekdays 9:40 ET | Submits only the planned sells, for accounts whose "Sells submit at" setting is the open; their buys still go in at 15:50. Same skip/no-retry rules. |
+| `trading-data-reference` | CronJob, 1st of month 07:00 ET | S&P 500 membership history and sector classifications |
+
+All containers run as non-root with a read-only root filesystem, except Postgres (UID 999, writable data dir). Jobs rebuild their price cache from Postgres in an `emptyDir`.
+
+### Secrets
+
+- `trading-assistant-secrets`: `POSTGRES_PASSWORD`, `TA_DATABASE_URL`, `TA_AUTH_PASSWORD` (web UI login; the plaintext was shared with Jon directly, not stored in the repo), `WEBULL_PAPER_APP_KEY`, `WEBULL_PAPER_APP_SECRET`, `TA_SECRET_KEY` (master key that encrypts API keys entered on an account in the Agents tab; they're stored encrypted in Postgres and never shown again). Live Webull keys (`WEBULL_APP_KEY` / `WEBULL_APP_SECRET`) are deliberately left out of the secret; a live account can take its keys in the Agents tab instead. If `TA_SECRET_KEY` is lost or changed, saved keys must be re-entered on each account (nothing else is affected).
+- `ghcr-pull`: docker-registry secret with a read:packages-only token. Create it with `deploy/seal-ghcr-pull-secret.sh` in the trading-assistant repo.
+
+### Operations
+
+- **Run a job now:** `kubectl -n trading-assistant create job --from=cronjob/trading-agent-plan plan-manual-$(date +%s)`
+- **Logs:** `kubectl -n trading-assistant logs job/<name>`
+- **Pause trading:** `kubectl -n trading-assistant patch cronjob trading-agent-execute -p '{"spec":{"suspend":true}}'` (and the same for `trading-agent-execute-open`). This won't survive the next Flux sync, so for a lasting pause set `suspend: true` in the manifest, or turn off auto-submit for the account in the Agents tab.
+- **Upgrade:** bump the image tag on all four containers in `flux/apps/trading-assistant.yaml`.
+- **Change the UI password:** re-seal `trading-assistant-secrets` with a new `TA_AUTH_PASSWORD`, keeping the other keys (`kubectl get secret` then `kubeseal`), then restart `trading-assistant-web`.
+
+---
+
+## Authentik (authentik namespace)
+
+**Manifests:** `flux/apps/authentik.yaml`, `flux/apps/authentik-secrets.sealedsecret.yaml`
+**Chart source:** `authentik` HelmRepository (charts.goauthentik.io), version 2026.8.3
+**Purpose:** Identity provider (SSO via OIDC, SAML, LDAP, and forward auth) for the homelab apps
+
+### Components
+
+| Component | Kind | Details |
+|---|---|---|
+| `authentik-postgres` | StatefulSet + Service | Postgres 18, 5Gi Longhorn at `/var/lib/postgresql` (the Postgres 18 volume path). The chart's bundled Bitnami Postgres is disabled. |
+| `authentik-server` | Deployment (chart) | Web UI, API, and the embedded outpost. Memory limit 1.5Gi. |
+| `authentik-worker` | Deployment (chart) | Background tasks, blueprints, and managed outposts. Memory limit 1.5Gi. |
+| `authentik` | Ingress (`tailscale` class) | Tailnet only, with HTTPS: `https://authentik.<tailnet>.ts.net`. Tailscale issues the Let's Encrypt cert, which OIDC redirects and secure cookies need. |
+
+Since 2025.10, Authentik no longer needs Redis.
+
+### Secrets
+
+- `authentik-secrets`: `AUTHENTIK_SECRET_KEY` (signs cookies and derives unique user IDs; **never change it** after the first install), `AUTHENTIK_POSTGRESQL__PASSWORD` (Postgres reads the same key), `AUTHENTIK_BOOTSTRAP_PASSWORD` (the first-run password for `akadmin`; it's read only when the database is empty).
+
+### Operations
+
+- **First login:** user `akadmin`, password from `kubectl -n authentik get secret authentik-secrets -o jsonpath='{.data.AUTHENTIK_BOOTSTRAP_PASSWORD}' | base64 -d`. Then create your own admin user, add it to `authentik Admins`, and deactivate `akadmin`.
+- **SSO apps:** Grafana, Open WebUI and Trading Assistant are defined in the `authentik-blueprint-sso` ConfigMap in `flux/apps/authentik.yaml`, a blueprint the worker applies on start and whenever it changes. To add an app, add a provider and application entry there (client ID in the blueprint, secret via `!Env` from `authentik-oidc-clients`), and seal the same secret into the app's namespace. The worker reads that secret only at start, so bump `homelab/oidc-clients-revision` (worker `podAnnotations`) when adding a key. Pods reach `https://authentik.<tailnet>.ts.net` directly, because node DNS forwards to MagicDNS.
+  - **Grafana:** "Sign in with authentik". Members of `authentik Admins` get the Grafana Admin role, and everyone else gets Viewer. The local `admin` login still works.
+  - **Open WebUI:** "Continue with authentik". Accounts are tied to the authentik user's OIDC subject, not their email. Merging by email is deliberately off: authentik sends `email_verified: false`, so a user who could change their email could take over someone else's account. The first account created becomes admin, and later SSO users start as `pending`. If an SSO login's email already belongs to a local account, Open WebUI refuses it ("email taken").
+  - **Trading Assistant:** signs in through authentik automatically. Access needs membership in `trading-admins`, `trading-traders` or `trading-viewers` (created once by the blueprint, with `jregeimbal` in `trading-admins`; manage members in the authentik admin UI). Role changes apply at the next sign-in (sessions last 8 hours).
+  - **Longhorn:** the UI has no login of its own, so authentik proxies it. The `longhorn` Tailscale Ingress points at `authentik-server`, whose embedded outpost matches the `longhorn.<tailnet>.ts.net` host to a proxy provider, requires an `authentik Admins` login, and then forwards to `longhorn-frontend`. The blueprint sets the embedded outpost's whole provider list, so add any future proxy providers to it there, not in the UI.
+- **Upgrade:** bump `version` in the HelmRelease. Upgrade one minor release at a time (for example 2026.8 → 2026.10), and back up Postgres first: `kubectl -n authentik exec authentik-postgres-0 -- pg_dump -U authentik authentik > authentik.sql`.
+- **Fresh install must migrate in one uninterrupted run.** If the first migration run on an empty database is killed partway, the next start runs the legacy `tenant_to_brand` system migration. That migration rewrites the partial history (`authentik_tenants` → `authentik_brands`), and every later start fails with `InconsistentMigrationHistory`. On these nodes the first run takes more than 10 minutes, which is why the HelmRelease has a 20m timeout and a 30m `progressDeadlineSeconds`. To recover a fresh install that never came up:
+  1. `flux suspend hr authentik -n authentik`, then scale `authentik-server` and `authentik-worker` to 0. Wait until their pods are gone, or they'll reconnect and race the reset.
+  2. Drop and recreate the `authentik` database.
+  3. Run the migrations alone in a one-off pod: the server image with the same env, `command: ["python", "-m", "lifecycle.migrate"]`, `workingDir: /`.
+  4. When it succeeds, scale the server and worker back to 1 and `flux resume hr authentik -n authentik`.
+
+  Never drop the database of an install that has users. This recovery is only for an install that never finished its first start.
+
+---
+
 ## Open WebUI (open-webui namespace)
 
 **HelmRelease:** `open-webui` in `open-webui` namespace  
@@ -125,7 +199,7 @@ Nothing outstanding — `API_SERVER_KEY` and `HERMES_DASHBOARD_SESSION_TOKEN` ar
 ### Components
 
 - Open WebUI web interface (ghcr.io/open-webui/open-webui)
-- Exposed via LoadBalancer with `tailscale` class → accessible on Tailnet
+- Exposed through a Tailscale Ingress at `https://open-webui.<tailnet>.ts.net` (Service is ClusterIP)
 - Default model: `meta-llama/llama-3.1-8b-instruct:latest`
 
 ### API Configuration
@@ -164,7 +238,7 @@ Nothing outstanding — `API_SERVER_KEY` and `HERMES_DASHBOARD_SESSION_TOKEN` ar
 
 - **Storage:** 5Gi Longhorn
 - **Admin password:** admin (change in production)
-- **Access:** LoadBalancer with `tailscale` class → accessible on Tailnet
+- **Access:** Tailscale Ingress at `https://grafana.<tailnet>.ts.net` (Service is ClusterIP)
 - **Data source:** Prometheus (`http://prometheus-server.monitoring.svc.cluster.local`)
 
 ### Custom Dashboards
@@ -180,6 +254,6 @@ Custom node dashboard available at `assets/grafana-dashboards/nodes.json`.
 | Hermes (jon) | jon-agent  | 5Gi Longhorn| ClusterIP  | from git      |
 | Hermes (ana) | ana-agent  | 5Gi Longhorn| ClusterIP  | from git      |
 | Hermes (wander) | wander-agent | 30Gi Longhorn| ClusterIP  | from git   |
-| Open WebUI | open-webui  | 10Gi Longhorn| Tailscale LB | 14.6.0      |
+| Open WebUI | open-webui  | 10Gi Longhorn| Tailscale Ingress (HTTPS) | 14.6.0      |
 | Prometheus | monitoring  | 5Gi Longhorn| ClusterIP  | 29.8.0        |
-| Grafana    | monitoring  | 5Gi Longhorn| Tailscale LB | 10.5.15     |
+| Grafana    | monitoring  | 5Gi Longhorn| Tailscale Ingress (HTTPS) | 10.5.15     |

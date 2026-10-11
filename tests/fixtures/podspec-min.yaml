@@ -1,0 +1,48 @@
+pod:
+  securityContext:
+    runAsUser: 10000
+  initContainers:
+  - name: init-x
+    image: img
+    command:
+    - /bin/sh
+    - -c
+    args:
+    - echo hi > /opt/data/marker
+    volumeMounts:
+    - name: data
+      mountPath: /opt/data
+    securityContext:
+      runAsUser: 0
+      readOnlyRootFilesystem: true
+  containers:
+  - name: svc-x
+    image: img
+    command:
+    - python3
+    - -m
+    - http.server
+    - "8642"
+    env:
+    - name: A
+      value: "1"
+    - name: T
+      valueFrom:
+        secretKeyRef:
+          name: s
+          key: t
+    volumeMounts:
+    - name: data
+      mountPath: /opt/data
+    ports:
+    - containerPort: 8642
+  volumes:
+  - name: data
+    persistentVolumeClaim:
+      claimName: x
+  - name: cfg
+    configMap:
+      name: cm-a
+configmaps:
+  cm-a:
+    app.conf: x=1

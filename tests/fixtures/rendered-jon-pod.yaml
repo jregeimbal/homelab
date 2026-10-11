@@ -1,0 +1,341 @@
+pod:
+  serviceAccountName: hermes-hermes-agent
+  automountServiceAccountToken: false
+  securityContext:
+    fsGroup: 10000
+    fsGroupChangePolicy: OnRootMismatch
+    runAsGroup: 1000
+    runAsNonRoot: true
+    runAsUser: 1000
+    seccompProfile:
+      type: RuntimeDefault
+  initContainers:
+  - name: bootstrap-config
+    image: ghcr.io/jregeimbal/hermes-agent-jregeimbal-homelab:v2026.9.24-6e01c6c
+    imagePullPolicy: IfNotPresent
+    command:
+    - /bin/sh
+    - -ec
+    args:
+    - "set -eu\nmkdir -p \"/opt/data/home\"\nif [ -f \"/bootstrap/config.yaml\" ];\
+      \ then\n  if [ \"true\" = \"true\" ] || [ ! -f \"/opt/data/config.yaml\" ];\
+      \ then\n    cp \"/bootstrap/config.yaml\" \"/opt/data/config.yaml\"\n  fi\n\
+      fi\nif [ -f \"/bootstrap/SOUL.md\" ]; then\n  if [ \"true\" = \"true\" ] ||\
+      \ [ ! -f \"/opt/data/SOUL.md\" ]; then\n    cp \"/bootstrap/SOUL.md\" \"/opt/data/SOUL.md\"\
+      \n  fi\nfi\n"
+    env:
+    - name: HERMES_HOME
+      value: /opt/data
+    volumeMounts:
+    - name: data
+      mountPath: /opt/data
+    - name: bootstrap
+      mountPath: /bootstrap
+      readOnly: true
+    - name: tmp
+      mountPath: /tmp
+    securityContext:
+      allowPrivilegeEscalation: false
+      capabilities:
+        drop:
+        - ALL
+      readOnlyRootFilesystem: true
+      runAsGroup: 10000
+      runAsUser: 10000
+      seccompProfile:
+        type: RuntimeDefault
+  - args:
+    - 'set -eu
+
+      rm -rf /shared-hermes-agent/*
+
+      cp -a /opt/hermes/. /shared-hermes-agent/
+
+      chown -R 1024:1024 /shared-hermes-agent
+
+      '
+    command:
+    - /bin/sh
+    - -ec
+    image: ghcr.io/jregeimbal/hermes-agent-jregeimbal-homelab:v2026.9.24-6e01c6c
+    imagePullPolicy: IfNotPresent
+    name: copy-hermes-source
+    securityContext:
+      allowPrivilegeEscalation: false
+      readOnlyRootFilesystem: true
+      runAsGroup: 0
+      runAsNonRoot: false
+      runAsUser: 0
+      seccompProfile:
+        type: RuntimeDefault
+    volumeMounts:
+    - mountPath: /shared-hermes-agent
+      name: hermes-agent-source
+    - mountPath: /tmp
+      name: tmp
+  - args:
+    - "set -eu\nif [ ! -f /opt/data/home/.gitconfig ]; then\n  cp /opt/config-defaults/git/gitconfig\
+      \ /opt/data/home/.gitconfig\nfi\nif [ ! -f /opt/data/home/.claude/settings.json\
+      \ ]; then\n  mkdir -p /opt/data/home/.claude\n  cp /opt/config-defaults/claude/settings.json\
+      \ /opt/data/home/.claude/settings.json\nfi\nif [ ! -f /opt/data/home/.config/opencode/opencode.json\
+      \ ]; then\n  mkdir -p /opt/data/home/.config/opencode\n  cp /opt/config-defaults/opencode/opencode.json\
+      \ /opt/data/home/.config/opencode/opencode.json\nfi\n"
+    command:
+    - /bin/sh
+    - -ec
+    image: ghcr.io/jregeimbal/hermes-agent-jregeimbal-homelab:v2026.9.24-6e01c6c
+    imagePullPolicy: IfNotPresent
+    name: bootstrap-home-config
+    securityContext:
+      allowPrivilegeEscalation: false
+      readOnlyRootFilesystem: true
+      runAsGroup: 0
+      runAsNonRoot: false
+      runAsUser: 0
+      seccompProfile:
+        type: RuntimeDefault
+    volumeMounts:
+    - mountPath: /opt/data
+      name: data
+    - mountPath: /tmp
+      name: tmp
+  - args:
+    - 'set -eu
+
+      chown -R 10000:10000 /opt/data
+
+      chown 10000:10000 /mnt/run
+
+      '
+    command:
+    - /bin/sh
+    - -ec
+    image: ghcr.io/jregeimbal/hermes-agent-jregeimbal-homelab:v2026.9.24-6e01c6c
+    imagePullPolicy: IfNotPresent
+    name: fix-data-ownership
+    securityContext:
+      allowPrivilegeEscalation: false
+      readOnlyRootFilesystem: true
+      runAsGroup: 0
+      runAsNonRoot: false
+      runAsUser: 0
+      seccompProfile:
+        type: RuntimeDefault
+    volumeMounts:
+    - mountPath: /opt/data
+      name: data
+    - mountPath: /tmp
+      name: tmp
+    - mountPath: /mnt/run
+      name: run-tmp
+  containers:
+  - name: hermes-agent
+    image: ghcr.io/jregeimbal/hermes-agent-jregeimbal-homelab:v2026.9.24-6e01c6c
+    imagePullPolicy: IfNotPresent
+    args:
+    - gateway
+    - run
+    workingDir: /opt/hermes
+    env:
+    - name: HERMES_HOME
+      value: /opt/data
+    - name: HOME
+      value: /opt/data/home
+    - name: ANTHROPIC_AUTH_TOKEN
+      value: lmstudio
+    - name: ANTHROPIC_BASE_URL
+      value: http://jonathans-mac-studio:8000
+    - name: BROWSER_CDP_URL
+      value: ws://127.0.0.1:3000/
+    - name: CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC
+      value: '1'
+    - name: DISCORD_ALLOWED_USERS
+      value: '808110923713216522'
+    - name: DISCORD_HOME_CHANNEL
+      value: '1490811659214913698'
+    - name: GATEWAY_ALLOW_ALL_USERS
+      value: 'false'
+    - name: HERMES_GATEWAY_PLATFORM_CONNECT_TIMEOUT
+      value: '90'
+    - name: HERMES_HUMAN_DELAY_MAX_MS
+      value: '2500'
+    - name: HERMES_HUMAN_DELAY_MIN_MS
+      value: '800'
+    - name: HERMES_HUMAN_DELAY_MODE
+      value: 'off'
+    - name: IMAGE_TOOLS_DEBUG
+      value: 'false'
+    - name: MOA_TOOLS_DEBUG
+      value: 'false'
+    - name: PATH
+      value: /root/.local/bin:/opt/hermes/.venv/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+    - name: PYTHONPATH
+      value: /opt/data/py-global
+    - name: SIGNAL_ALLOWED_USERS
+      value: ''
+    - name: SIGNAL_GROUP_ALLOWED_USERS
+      value: ''
+    - name: SLACK_ALLOWED_USERS
+      value: ''
+    - name: TELEGRAM_ALLOWED_USERS
+      value: '8238305614'
+    - name: TELEGRAM_HOME_CHANNEL
+      value: '-1003912742246'
+    - name: VISION_TOOLS_DEBUG
+      value: 'false'
+    - name: WEB_TOOLS_DEBUG
+      value: 'false'
+    - name: WHATSAPP_ALLOWED_USERS
+      value: '15409075116'
+    - name: WHATSAPP_DEBUG
+      value: 'true'
+    - name: WHATSAPP_ENABLED
+      value: 'true'
+    - name: WHATSAPP_MODE
+      value: self-chat
+    - name: API_SERVER_ENABLED
+      value: 'true'
+    - name: API_SERVER_HOST
+      value: 0.0.0.0
+    - name: API_SERVER_PORT
+      value: '8642'
+    - name: API_SERVER_CORS_ORIGINS
+      value: ''
+    - name: API_SERVER_MODEL_NAME
+      value: hermes-agent
+    envFrom:
+    - secretRef:
+        name: hermes-jon-secrets
+    ports:
+    - name: api-server
+      containerPort: 8642
+      protocol: TCP
+    - name: desktop
+      containerPort: 9119
+      protocol: TCP
+    resources:
+      limits:
+        cpu: '2'
+        memory: 4Gi
+      requests:
+        cpu: 500m
+        memory: 1Gi
+    securityContext:
+      allowPrivilegeEscalation: false
+      capabilities:
+        drop:
+        - ALL
+      readOnlyRootFilesystem: true
+      runAsGroup: 10000
+      runAsUser: 10000
+      seccompProfile:
+        type: RuntimeDefault
+    volumeMounts:
+    - name: data
+      mountPath: /opt/data
+    - name: tmp
+      mountPath: /tmp
+    - name: dshm
+      mountPath: /dev/shm
+    - mountPath: /run
+      name: run-tmp
+  - image: ghcr.io/browserless/chromium:latest
+    imagePullPolicy: Always
+    name: browserless-chromium
+    ports:
+    - containerPort: 3000
+      name: cdp
+      protocol: TCP
+    - containerPort: 8080
+      name: http
+      protocol: TCP
+    resources:
+      limits:
+        cpu: '2'
+        memory: 4Gi
+      requests:
+        cpu: 500m
+        memory: 2Gi
+    securityContext:
+      allowPrivilegeEscalation: false
+      seccompProfile:
+        type: RuntimeDefault
+  - command:
+    - hermes
+    - dashboard
+    - --host
+    - 0.0.0.0
+    - --port
+    - '9119'
+    - --insecure
+    - --no-open
+    env:
+    - name: PATH
+      value: /root/.local/bin:/opt/hermes/.venv/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+    - name: HERMES_HOME
+      value: /opt/data
+    - name: HERMES_DASHBOARD_SESSION_TOKEN
+      valueFrom:
+        secretKeyRef:
+          key: HERMES_DASHBOARD_SESSION_TOKEN
+          name: hermes-jon-secrets
+    image: ghcr.io/jregeimbal/hermes-agent-jregeimbal-homelab:v2026.9.24-6e01c6c
+    imagePullPolicy: IfNotPresent
+    name: hermes-desktop
+    ports:
+    - containerPort: 9119
+      name: desktop
+      protocol: TCP
+    resources:
+      limits:
+        cpu: 500m
+        memory: 768Mi
+      requests:
+        cpu: 100m
+        memory: 128Mi
+    securityContext:
+      allowPrivilegeEscalation: false
+      runAsGroup: 10000
+      runAsUser: 10000
+      seccompProfile:
+        type: RuntimeDefault
+    volumeMounts:
+    - mountPath: /opt/data
+      name: data
+    - mountPath: /opt/hermes
+      name: hermes-agent-source
+      readOnly: true
+  volumes:
+  - name: data
+    persistentVolumeClaim:
+      claimName: hermes-hermes-agent-data
+  - name: bootstrap
+    configMap:
+      name: hermes-hermes-agent-config
+  - name: tmp
+    emptyDir: {}
+  - name: dshm
+    emptyDir:
+      medium: Memory
+      sizeLimit: 1Gi
+  - emptyDir: {}
+    name: run-tmp
+  - emptyDir: {}
+    name: hermes-agent-source
+  terminationGracePeriodSeconds: 120
+configmaps:
+  hermes-hermes-agent-config:
+    config.yaml: "agent:\n  gateway_timeout: 1800\n  max_turns: 500\n  restart_drain_timeout:\
+      \ 60\n  tool_use_enforcement: true\nbrowser:\n  allow_private_urls: false\n\
+      \  cdp_url: ws://127.0.0.1:3000/\n  command_timeout: 60\n  inactivity_timeout:\
+      \ 120\ncompression:\n  enabled: true\n  protect_last_n: 20\n  target_ratio:\
+      \ 0.2\n  threshold: 0.5\ndashboard:\n  basic_auth:\n    password_hash: scrypt$16384$8$1$B5rFRJf54X6PtqZt3tt2kA==$gaNio1AY8BJwtKXK32JEm08BQNinGzcArMT5tTAF/0s=\n\
+      \    username: jon\ndisplay:\n  interim_assistant_messages: true\n  tool_progress:\
+      \ all\nmcp_servers:\n  context7:\n    headers:\n      CONTEXT7_API_KEY: ctx7sk-f038e7b8-560b-4116-b059-f2fbbf7f365d\n\
+      \    url: https://mcp.context7.com/mcp\nmodel:\n  api_key: superduper\n  base_url:\
+      \ http://jonathans-mac-studio:8000/v1\n  default: mtplx-qwen38-27b-optimized-quality\n\
+      \  provider: custom\nsecurity:\n  approval_mode: smart\n  redact_secrets: true\n\
+      \  tirith_enabled: true\n  tirith_fail_open: true\nstt:\n  enabled: true\nterminal:\n\
+      \  backend: local\n  cwd: .\n  env_passthrough:\n  - PATH\n  - GITHUB_TOKEN\n\
+      \  timeout: 180\nweb:\n  backend: firecrawl\nwhatsapp:\n  reply_prefix: \"\\\
+      U0001F916 *Jon R Claw*\\n\u2500\u2500\u2500\u2500\u2500\u2500\\n\"\n"
