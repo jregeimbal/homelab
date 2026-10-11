@@ -95,7 +95,7 @@ spec:
         command:
           - /bin/sh
           - -ec
-        image: ghcr.io/jregeimbal/hermes-agent-jregeimbal-homelab:v2026.9.11-f593bc0
+        image: ghcr.io/jregeimbal/hermes-agent-jregeimbal-homelab:v2026.10.11-c010649
         imagePullPolicy: IfNotPresent
         name: fix-data-ownership
         securityContext:
