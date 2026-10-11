@@ -124,7 +124,7 @@ GitOps-managed Kubernetes cluster with Tailscale for external access and Longhor
 | Prometheus | monitoring  | Metrics collection and storage                 | ClusterIP      |
 | Grafana    | monitoring  | Metrics visualization dashboard                | Tailscale Ingress (HTTPS) |
 | Authentik  | authentik   | Identity provider (SSO/OIDC) for homelab apps  | Tailscale Ingress (HTTPS) |
-| Trading Assistant | trading-assistant | Strategy research UI and daily trading agent (Webull paper) | Tailscale LB |
+| Trading Assistant | trading-assistant | Strategy research UI and daily trading agent (Webull paper) | Tailscale Ingress (HTTPS, authentik SSO) |
 
 [Full app reference →](docs/apps.md)
 

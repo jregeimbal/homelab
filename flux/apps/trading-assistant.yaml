@@ -144,13 +144,20 @@ spec:
           type: RuntimeDefault
       containers:
         - name: web
-          image: ghcr.io/jregeimbal/trading-assistant:202610101541_ae5c694
+          image: ghcr.io/jregeimbal/trading-assistant:202610102002_4285c7d
           args: ["serve", "--host", "0.0.0.0", "--port", "8765", "--no-open"]
           env:
-            # HTTP Basic login for the whole UI and API (password: TA_AUTH_PASSWORD in the
-            # sealed secret). /healthz stays open for the probes below.
-            - name: TA_AUTH_USERNAME
-              value: jon
+            # Single sign-on through authentik (provider "Trading Assistant" in authentik.yaml). Roles
+            # come from the trading-admins / trading-traders / trading-viewers groups; everything but
+            # /healthz (the probes below) needs a sign-in. TA_OIDC_CLIENT_SECRET is in the sealed secret.
+            - name: TA_AUTH_MODE
+              value: oidc
+            - name: TA_PUBLIC_URL
+              value: https://trading.hartley-gray.ts.net
+            - name: TA_OIDC_ISSUER
+              value: https://authentik.hartley-gray.ts.net/application/o/trading-assistant/
+            - name: TA_OIDC_CLIENT_ID
+              value: trading-assistant
           envFrom:
             - secretRef:
                 name: trading-assistant-secrets
@@ -193,23 +200,39 @@ spec:
         - name: tmp
           emptyDir: {}
 ---
-# Tailnet only, like Open WebUI, and behind the app's own login (the Agents tab can submit orders).
+# Behind the app's own sign-in (the Agents tab can submit orders); exposed by the Ingress below.
 apiVersion: v1
 kind: Service
 metadata:
   name: trading-assistant
   namespace: trading-assistant
-  annotations:
-    tailscale.com/hostname: trading-assistant
 spec:
-  type: LoadBalancer
-  loadBalancerClass: tailscale
+  type: ClusterIP
   selector:
     app.kubernetes.io/name: trading-assistant-web
   ports:
     - name: http
       port: 80
       targetPort: 8765
+---
+# Tailnet only, with a Let's Encrypt cert issued by Tailscale: https://trading.hartley-gray.ts.net
+# (single sign-on needs HTTPS for its redirect and secure cookies). A new name rather than
+# trading-assistant, which the old plain-HTTP LoadBalancer's tailnet device held.
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: trading-assistant
+  namespace: trading-assistant
+spec:
+  ingressClassName: tailscale
+  defaultBackend:
+    service:
+      name: trading-assistant
+      port:
+        number: 80
+  tls:
+    - hosts:
+        - trading
 
 # ---------------------------------------------------------------- Daily trading agent
 # Decide at the close, trade just before the next close (Webull rejects market-on-close and
@@ -249,7 +272,7 @@ spec:
               type: RuntimeDefault
           containers:
             - name: plan
-              image: ghcr.io/jregeimbal/trading-assistant:202610101541_ae5c694
+              image: ghcr.io/jregeimbal/trading-assistant:202610102002_4285c7d
               # Refreshes prices for current members, records fills, plans tomorrow's orders.
               args: ["agent", "plan"]
               envFrom:
@@ -311,7 +334,7 @@ spec:
               type: RuntimeDefault
           containers:
             - name: execute
-              image: ghcr.io/jregeimbal/trading-assistant:202610101541_ae5c694
+              image: ghcr.io/jregeimbal/trading-assistant:202610102002_4285c7d
               # Submits planned orders for accounts with auto-submit on, then records fills.
               args: ["agent", "execute"]
               envFrom:
@@ -372,7 +395,7 @@ spec:
               type: RuntimeDefault
           containers:
             - name: execute-open
-              image: ghcr.io/jregeimbal/trading-assistant:202610101541_ae5c694
+              image: ghcr.io/jregeimbal/trading-assistant:202610102002_4285c7d
               # Submits planned sells only, then records fills.
               args: ["agent", "execute", "--sells-only"]
               envFrom:
@@ -432,7 +455,7 @@ spec:
               type: RuntimeDefault
           containers:
             - name: reference
-              image: ghcr.io/jregeimbal/trading-assistant:202610101541_ae5c694
+              image: ghcr.io/jregeimbal/trading-assistant:202610102002_4285c7d
               command: ["sh", "-c", "ta data universe && ta data sectors"]
               envFrom:
                 - secretRef:
