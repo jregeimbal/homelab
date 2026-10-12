@@ -66,15 +66,21 @@ spec:
           ports:
             - name: postgres
               containerPort: 5432
+          # pg_isready can take seconds on a busy board (the default 1s timeout restarted a healthy
+          # database over and over after the 2026-10-12 power outage), so allow 5s, and only restart
+          # after about 3 minutes of failed checks.
           readinessProbe:
             exec:
               command: ["pg_isready", "-U", "trading", "-d", "trading"]
             periodSeconds: 10
+            timeoutSeconds: 5
           livenessProbe:
             exec:
               command: ["pg_isready", "-U", "trading", "-d", "trading"]
             initialDelaySeconds: 30
             periodSeconds: 30
+            timeoutSeconds: 5
+            failureThreshold: 6
           resources:
             requests:
               cpu: 100m

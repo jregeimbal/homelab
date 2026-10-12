@@ -48,6 +48,9 @@ xzcat DietPi_SOQuartz-ARMv8-Trixie.img.xz | sudo dd of=/dev/diskX bs=4m status=p
 3. Run `dietpi-software` to install any additional software
 4. Assign static IPs or configure DHCP reservations
 5. Ensure all nodes can reach each other via SSH
+6. Keep clocks synced continuously: `scripts/set-node-time-sync.sh` (DietPi time sync mode 4). The boards have no
+   battery-backed clock, so with DietPi's default (sync once at boot) a node that boots before the network is up
+   runs hours behind. Images burned with `setup/burn-url-to-device.sh` already use mode 4.
 
 Node naming convention:
 - `homelab-soquartz-1` — controller
