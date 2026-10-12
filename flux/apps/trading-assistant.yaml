@@ -1,5 +1,6 @@
 ---
-# Trading assistant (github.com/jregeimbal/trading-assistant, private).
+# Trading assistant (github.com/jregeimbal/trading-assistant, private). A single Go binary (`ta`, the
+# image's entrypoint) on a distroless image: no shell, so every container passes `ta` arguments.
 # Postgres 18, the web UI (strategy builder, backtests, reports, Agents tab; plus an experimental React
 # UI at /app that each person can switch on for themselves) on the tailnet,
 # and the daily trading-agent jobs. Image is private on GHCR: pulled with `ghcr-pull`.
@@ -145,7 +146,7 @@ spec:
           type: RuntimeDefault
       containers:
         - name: web
-          image: ghcr.io/jregeimbal/trading-assistant:202610111604_535a1be
+          image: ghcr.io/jregeimbal/trading-assistant:202610121834_42b005b
           args: ["serve", "--host", "0.0.0.0", "--port", "8765", "--no-open"]
           env:
             # Single sign-on through authentik (provider "Trading Assistant" in authentik.yaml). Roles
@@ -273,7 +274,7 @@ spec:
               type: RuntimeDefault
           containers:
             - name: plan
-              image: ghcr.io/jregeimbal/trading-assistant:202610111604_535a1be
+              image: ghcr.io/jregeimbal/trading-assistant:202610121834_42b005b
               # Refreshes prices for current members, records fills, plans tomorrow's orders.
               args: ["agent", "plan"]
               envFrom:
@@ -335,7 +336,7 @@ spec:
               type: RuntimeDefault
           containers:
             - name: execute
-              image: ghcr.io/jregeimbal/trading-assistant:202610111604_535a1be
+              image: ghcr.io/jregeimbal/trading-assistant:202610121834_42b005b
               # Submits planned orders for accounts with auto-submit on, then records fills.
               args: ["agent", "execute"]
               envFrom:
@@ -396,7 +397,7 @@ spec:
               type: RuntimeDefault
           containers:
             - name: execute-open
-              image: ghcr.io/jregeimbal/trading-assistant:202610111604_535a1be
+              image: ghcr.io/jregeimbal/trading-assistant:202610121834_42b005b
               # Submits planned sells only, then records fills.
               args: ["agent", "execute", "--sells-only"]
               envFrom:
@@ -454,10 +455,35 @@ spec:
             runAsNonRoot: true
             seccompProfile:
               type: RuntimeDefault
+          # The image has no shell (distroless), so the two steps run in order as an init container
+          # and the main container; sectors only runs once the universe succeeded.
+          initContainers:
+            - name: universe
+              args: ["data", "universe"]
+              image: ghcr.io/jregeimbal/trading-assistant:202610121834_42b005b
+              envFrom:
+                - secretRef:
+                    name: trading-assistant-secrets
+              resources:
+                requests:
+                  cpu: 250m
+                  memory: 768Mi
+                limits:
+                  memory: 2Gi
+              securityContext:
+                allowPrivilegeEscalation: false
+                readOnlyRootFilesystem: true
+                capabilities:
+                  drop: ["ALL"]
+              volumeMounts:
+                - name: data
+                  mountPath: /data
+                - name: tmp
+                  mountPath: /tmp
           containers:
-            - name: reference
-              image: ghcr.io/jregeimbal/trading-assistant:202610111604_535a1be
-              command: ["sh", "-c", "ta data universe && ta data sectors"]
+            - name: sectors
+              args: ["data", "sectors"]
+              image: ghcr.io/jregeimbal/trading-assistant:202610121834_42b005b
               envFrom:
                 - secretRef:
                     name: trading-assistant-secrets
