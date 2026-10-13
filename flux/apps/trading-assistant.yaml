@@ -146,7 +146,7 @@ spec:
           type: RuntimeDefault
       containers:
         - name: web
-          image: ghcr.io/jregeimbal/trading-assistant:202610121834_42b005b
+          image: ghcr.io/jregeimbal/trading-assistant:202610122218_91833c0
           args: ["serve", "--host", "0.0.0.0", "--port", "8765", "--no-open"]
           env:
             # Single sign-on through authentik (provider "Trading Assistant" in authentik.yaml). Roles
@@ -274,7 +274,7 @@ spec:
               type: RuntimeDefault
           containers:
             - name: plan
-              image: ghcr.io/jregeimbal/trading-assistant:202610121834_42b005b
+              image: ghcr.io/jregeimbal/trading-assistant:202610122218_91833c0
               # Refreshes prices for current members, records fills, plans tomorrow's orders.
               args: ["agent", "plan"]
               envFrom:
@@ -336,7 +336,7 @@ spec:
               type: RuntimeDefault
           containers:
             - name: execute
-              image: ghcr.io/jregeimbal/trading-assistant:202610121834_42b005b
+              image: ghcr.io/jregeimbal/trading-assistant:202610122218_91833c0
               # Submits planned orders for accounts with auto-submit on, then records fills.
               args: ["agent", "execute"]
               envFrom:
@@ -397,7 +397,7 @@ spec:
               type: RuntimeDefault
           containers:
             - name: execute-open
-              image: ghcr.io/jregeimbal/trading-assistant:202610121834_42b005b
+              image: ghcr.io/jregeimbal/trading-assistant:202610122218_91833c0
               # Submits planned sells only, then records fills.
               args: ["agent", "execute", "--sells-only"]
               envFrom:
@@ -460,7 +460,7 @@ spec:
           initContainers:
             - name: universe
               args: ["data", "universe"]
-              image: ghcr.io/jregeimbal/trading-assistant:202610121834_42b005b
+              image: ghcr.io/jregeimbal/trading-assistant:202610122218_91833c0
               envFrom:
                 - secretRef:
                     name: trading-assistant-secrets
@@ -483,7 +483,7 @@ spec:
           containers:
             - name: sectors
               args: ["data", "sectors"]
-              image: ghcr.io/jregeimbal/trading-assistant:202610121834_42b005b
+              image: ghcr.io/jregeimbal/trading-assistant:202610122218_91833c0
               envFrom:
                 - secretRef:
                     name: trading-assistant-secrets
