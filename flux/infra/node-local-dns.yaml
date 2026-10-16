@@ -4,7 +4,8 @@
 # bound to 169.254.20.10 (link-local).
 #
 # Two init containers set up the host networking before CoreDNS starts:
-#   1. setup-lo:       adds 169.254.20.10/32 to loopback (LOCAL routing table)
+#   1. setup-address:  puts 169.254.20.10/32 on "nodelocaldns", an empty bridge
+#                      that exists only to hold it (LOCAL routing table)
 #   2. setup-iptables: DNATs pod DNS traffic (10.96.0.10:53 → 169.254.20.10:53)
 #                      in PREROUTING only — NOT OUTPUT, which would loop CoreDNS's
 #                      own upstream forwarding back to itself.
@@ -18,9 +19,16 @@
 # scripts/set-node-dns.sh. A node without resolved refuses 127.0.0.53, so the cache
 # falls back to 100.100.100.100 (Tailscale MagicDNS) there, as before.
 #
-# Note: k8s-dns-node-cache was tried but its vishvananda/netlink dummy-interface
-# type assertion fails on Linux 6.19+/7.x kernels. This approach uses plain
-# CoreDNS v1.14.2 and avoids the wrapper binary entirely.
+# Note: not on lo. k0s picks its API address, when started without one, as the
+# first non-127.x IPv4 address in interface order, and lo comes first: a
+# controller restarted while this was on lo advertised 169.254.20.10, and the
+# workers' kube-proxy lost the API (2026-10-15). The bridge is created after
+# boot, so it sorts after eth0 on every node, controllers included.
+#
+# Note: a bridge, not a dummy interface as upstream NodeLocal DNSCache uses: these
+# kernels are built without dummy support (CONFIG_DUMMY), which is likely also why
+# k8s-dns-node-cache's dummy-interface setup failed when it was tried. This uses
+# plain CoreDNS v1.14.2 instead of that wrapper binary.
 #
 # Note: k0s forbids setting clusterDNS in workerProfiles (it computes it from
 # serviceCIDR). The iptables DNAT approach is used instead.
@@ -124,13 +132,17 @@ spec:
         - operator: Exists
           effect: NoExecute
       initContainers:
-        - name: setup-lo
+        - name: setup-address
           image: busybox:1.36
           command: ["sh", "-c"]
           args:
             - |
+              # Earlier versions put the address on lo; take it off there.
               ip addr del 169.254.20.10/32 dev lo 2>/dev/null
-              ip addr add 169.254.20.10/32 dev lo
+              ip link show nodelocaldns >/dev/null 2>&1 || ip link add nodelocaldns type bridge
+              ip addr del 169.254.20.10/32 dev nodelocaldns 2>/dev/null
+              ip addr add 169.254.20.10/32 dev nodelocaldns
+              ip link set nodelocaldns up
           securityContext:
             privileged: true
         - name: setup-iptables
