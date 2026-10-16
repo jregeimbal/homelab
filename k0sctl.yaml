@@ -46,7 +46,8 @@ spec:
           # Pinned: k0s otherwise picks its address when it starts, and node-local-dns
           # puts 169.254.20.10 on every node's loopback. On 2026-10-15 a controller
           # restart picked that, so workers' kube-proxy (and the kubernetes service)
-          # pointed at their own DNS cache instead of the API. Needs a DHCP reservation.
+          # pointed at their own DNS cache instead of the API. The router has a static
+          # lease for this address.
           address: 192.168.1.223
           k0sApiPort: 9443
           port: 6443
