@@ -51,6 +51,12 @@ xzcat DietPi_SOQuartz-ARMv8-Trixie.img.xz | sudo dd of=/dev/diskX bs=4m status=p
 6. Keep clocks synced continuously: `scripts/set-node-time-sync.sh` (DietPi time sync mode 4). The boards have no
    battery-backed clock, so with DietPi's default (sync once at boot) a node that boots before the network is up
    runs hours behind. Images burned with `setup/burn-url-to-device.sh` already use mode 4.
+7. Put DNS behind systemd-resolved: `scripts/set-node-dns.sh <host>` (or no host for all of them; `--check` only
+   reports). Without it, the DHCP client and Tailscale (DietPi software 58) both rewrite `/etc/resolv.conf`; when
+   Tailscale reads the file mid-rewrite it's left with no upstream DNS, and every lookup outside the tailnet fails on
+   that node, pods included, until the next DHCP renewal (up to 11 hours). With resolved, the router answers outside
+   names and Tailscale only the tailnet's. Run it after the node has joined the cluster (step 3): it restarts k0s so
+   kubelet uses resolved's upstream list.
 
 Node naming convention:
 - `homelab-soquartz-1` — controller

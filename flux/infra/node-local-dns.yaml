@@ -12,8 +12,11 @@
 # Pods keep nameserver 10.96.0.10 in resolv.conf (no kubelet change needed);
 # iptables transparently redirects to the local cache on every node.
 # cluster.local queries forward to CoreDNS via TCP (force_tcp removes the
-# conntrack race on the cache→CoreDNS leg). External queries go directly to
-# 100.100.100.100 (Tailscale MagicDNS), bypassing ConnTrack entirely.
+# conntrack race on the cache→CoreDNS leg). External queries go to the node's
+# systemd-resolved stub (127.0.0.53, reachable because this runs on the host network),
+# which sends tailnet names to Tailscale and everything else to the router; see
+# scripts/set-node-dns.sh. A node without resolved refuses 127.0.0.53, so the cache
+# falls back to 100.100.100.100 (Tailscale MagicDNS) there, as before.
 #
 # Note: k8s-dns-node-cache was tried but its vishvananda/netlink dummy-interface
 # type assertion fails on Linux 6.19+/7.x kernels. This approach uses plain
@@ -81,7 +84,9 @@ data:
         reload
         loop
         bind 169.254.20.10
-        forward . 100.100.100.100
+        forward . 127.0.0.53 100.100.100.100 {
+            policy sequential
+        }
         prometheus :9253
     }
 ---
@@ -104,6 +109,10 @@ spec:
     metadata:
       labels:
         k8s-app: node-local-dns
+      annotations:
+        # The Corefile is mounted with subPath, which never sees ConfigMap updates:
+        # bump this when it changes so the pods restart with it.
+        homelab/corefile-revision: "2"
     spec:
       priorityClassName: system-node-critical
       serviceAccountName: node-local-dns
