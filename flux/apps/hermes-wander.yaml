@@ -24,8 +24,6 @@ spec:
       existingSecret: hermes-wander-secrets
     config:
       values:
-        image_gen:
-          provider: openrouter
         agent:
           gateway_timeout: 1800
           max_turns: 500
@@ -100,6 +98,7 @@ spec:
       GATEWAY_ALLOW_ALL_USERS: "false"
       HERMES_GATEWAY_PLATFORM_CONNECT_TIMEOUT: "90"
       PATH: /root/.local/bin:/opt/hermes/.venv/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+      PYTHONPATH: /opt/data/py-global
       WHATSAPP_ALLOW_ALL_USERS: "true"
       WHATSAPP_ALLOWED_USERS: "*"
       WHATSAPP_ENABLED: "true"
@@ -128,7 +127,7 @@ spec:
           seccompProfile:
             type: RuntimeDefault
       - name: hermes-desktop
-        image: ghcr.io/jregeimbal/hermes-agent-jregeimbal-homelab:v2026.9.24-f599ee6
+        image: ghcr.io/jregeimbal/hermes-agent-jregeimbal-homelab:v2026.10.11-c010649
         imagePullPolicy: IfNotPresent
         command:
           - hermes
@@ -156,7 +155,7 @@ spec:
         resources:
           limits:
             cpu: "500m"
-            memory: 768Mi
+            memory: 512Mi
           requests:
             cpu: 100m
             memory: 128Mi
@@ -182,7 +181,7 @@ spec:
         command:
           - /bin/sh
           - -ec
-        image: ghcr.io/jregeimbal/hermes-agent-jregeimbal-homelab:v2026.9.24-f599ee6
+        image: ghcr.io/jregeimbal/hermes-agent-jregeimbal-homelab:v2026.10.11-c010649
         imagePullPolicy: IfNotPresent
         name: copy-hermes-source
         securityContext:
@@ -215,7 +214,7 @@ spec:
         command:
           - /bin/sh
           - -ec
-        image: ghcr.io/jregeimbal/hermes-agent-jregeimbal-homelab:v2026.9.24-f599ee6
+        image: ghcr.io/jregeimbal/hermes-agent-jregeimbal-homelab:v2026.10.11-c010649
         imagePullPolicy: IfNotPresent
         name: bootstrap-home-config
         securityContext:
@@ -239,7 +238,7 @@ spec:
         command:
           - /bin/sh
           - -ec
-        image: ghcr.io/jregeimbal/hermes-agent-jregeimbal-homelab:v2026.9.24-f599ee6
+        image: ghcr.io/jregeimbal/hermes-agent-jregeimbal-homelab:v2026.10.11-c010649
         imagePullPolicy: IfNotPresent
         name: fix-data-ownership
         securityContext:
@@ -263,7 +262,7 @@ spec:
     fullnameOverride: hermes-wander
     image:
       repository: ghcr.io/jregeimbal/hermes-agent-jregeimbal-homelab
-      tag: "v2026.9.24-f599ee6"
+      tag: "v2026.9.11-f593bc0"
       pullPolicy: IfNotPresent
     podSecurityContext:
       fsGroup: 10000
