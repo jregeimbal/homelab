@@ -149,6 +149,37 @@ All containers run as non-root with a read-only root filesystem, except Postgres
 
 ---
 
+## Sofarmap (sofarmap namespace)
+
+**Source:** github.com/jregeimbal/sofarmap (private)
+**Images:** `ghcr.io/jregeimbal/sofarmap:<datetime_sha>` (the app) and `ghcr.io/jregeimbal/sofarmap-db:18-postgis3` (Postgres 18 + PostGIS; the official postgis images are amd64-only), both private, pulled with the `ghcr-pull` SealedSecret, built by that repo's CI for amd64 and arm64
+**Manifests:** `flux/apps/sofarmap.yaml`
+**Purpose:** imports Google Maps history (Timeline exports, Takeout) and renders printable high-resolution maps in several projections; has a map editor for fixing and adding data
+
+### Components
+
+| Component | Kind | Details |
+|---|---|---|
+| `sofarmap-postgres` | StatefulSet + Service | PostGIS on Postgres 18, 10Gi Longhorn at `/var/lib/postgresql` (the Postgres 18 volume path). Visits, paths, places, region boundaries, jobs, users. |
+| `sofarmap` | Deployment | Go API, the React UI, and the background workers (imports, renders, bulk driving-path replacement) in one pod. 20Gi Longhorn at `/var/lib/sofarmap` (uploads, rendered posters). Memory limit 3Gi (a 120-megapixel PNG peaks around 2 GB). Natural Earth boundaries and OurAirports are baked into the image and loaded into Postgres on first start. |
+| `sofarmap` | Service + Tailscale Ingress | Tailnet only, HTTPS: `https://sofarmap.<tailnet>.ts.net`. Sign-in is authentik only (provider/app `sofarmap`); access needs the `sofarmap-users` group (created once by the blueprint with `jregeimbal` in it; manage members in the authentik admin UI). |
+
+### Secrets
+
+- `sofarmap-secrets`: `POSTGRES_PASSWORD`, `DATABASE_URL`, `SESSION_SECRET` and `TOKEN_ENCRYPTION_KEY` (generated), `OIDC_CLIENT_SECRET` (the same value as `SOFARMAP_OIDC_CLIENT_SECRET` in `authentik-oidc-clients`), `GOOGLE_MAPS_API_KEY` (browser key for the editor's basemap; restrict it by HTTP referrer to `https://sofarmap.<tailnet>.ts.net/*`) and `ORS_API_KEY` (OpenRouteService directions; free tier is 2000 requests/day, and the app queues bulk jobs around that).
+- `ghcr-pull`: docker-registry secret with a read:packages-only token.
+- Create all three with `scripts/seal-sofarmap-secrets.sh` (it merges the client secret into `authentik-oidc-clients` without touching the other keys).
+
+### Notes
+
+- **No Google sign-in or Google Data Portability sync here:** that needs a Google OAuth client with a redirect URI Google accepts; authentik is the only login. Import history by uploading a Timeline export or Takeout archive.
+- **Accounts:** the app keys accounts to a unique email. authentik sends `email_verified: false`, so the deployment sets `OIDC_TRUST_EMAIL=1` (authentik users and their emails are admin-managed). A second sign-in method with the same email is only attached after the person signs in with one already on the account.
+- **MFA:** enforce it in authentik (an authenticator-validation stage on the sign-in flow). The app can additionally require proof from the token with `OIDC_REQUIRE_MFA=1`, but that depends on the `amr` claim authentik sends, so it is off until confirmed.
+- **Upgrade:** bump the app image tag in `flux/apps/sofarmap.yaml`. Database migrations run at startup.
+- **Logs:** `kubectl -n sofarmap logs deploy/sofarmap`
+
+---
+
 ## Authentik (authentik namespace)
 
 **Manifests:** `flux/apps/authentik.yaml`, `flux/apps/authentik-secrets.sealedsecret.yaml`
@@ -173,10 +204,11 @@ Since 2025.10, Authentik no longer needs Redis.
 ### Operations
 
 - **First login:** user `akadmin`, password from `kubectl -n authentik get secret authentik-secrets -o jsonpath='{.data.AUTHENTIK_BOOTSTRAP_PASSWORD}' | base64 -d`. Then create your own admin user, add it to `authentik Admins`, and deactivate `akadmin`.
-- **SSO apps:** Grafana, Open WebUI and Trading Assistant are defined in the `authentik-blueprint-sso` ConfigMap in `flux/apps/authentik.yaml`, a blueprint the worker applies on start and whenever it changes. To add an app, add a provider and application entry there (client ID in the blueprint, secret via `!Env` from `authentik-oidc-clients`), and seal the same secret into the app's namespace. The worker reads that secret only at start, so bump `homelab/oidc-clients-revision` (worker `podAnnotations`) when adding a key. Pods reach `https://authentik.<tailnet>.ts.net` directly, because node DNS forwards to MagicDNS.
+- **SSO apps:** Grafana, Open WebUI, Trading Assistant and Sofarmap are defined in the `authentik-blueprint-sso` ConfigMap in `flux/apps/authentik.yaml`, a blueprint the worker applies on start and whenever it changes. To add an app, add a provider and application entry there (client ID in the blueprint, secret via `!Env` from `authentik-oidc-clients`), and seal the same secret into the app's namespace. The worker reads that secret only at start, so bump `homelab/oidc-clients-revision` (worker `podAnnotations`) when adding a key. Pods reach `https://authentik.<tailnet>.ts.net` directly, because node DNS forwards to MagicDNS.
   - **Grafana:** "Sign in with authentik". Members of `authentik Admins` get the Grafana Admin role, and everyone else gets Viewer. The local `admin` login still works.
   - **Open WebUI:** "Continue with authentik". Accounts are tied to the authentik user's OIDC subject, not their email. Merging by email is deliberately off: authentik sends `email_verified: false`, so a user who could change their email could take over someone else's account. The first account created becomes admin, and later SSO users start as `pending`. If an SSO login's email already belongs to a local account, Open WebUI refuses it ("email taken").
   - **Trading Assistant:** signs in through authentik automatically. Access needs membership in `trading-admins`, `trading-traders` or `trading-viewers` (created once by the blueprint, with `jregeimbal` in `trading-admins`; manage members in the authentik admin UI). Role changes apply at the next sign-in (sessions last 8 hours).
+  - **Sofarmap:** signs in through authentik. Access needs membership in `sofarmap-users`.
   - **Longhorn:** the UI has no login of its own, so authentik proxies it. The `longhorn` Tailscale Ingress points at `authentik-server`, whose embedded outpost matches the `longhorn.<tailnet>.ts.net` host to a proxy provider, requires an `authentik Admins` login, and then forwards to `longhorn-frontend`. The blueprint sets the embedded outpost's whole provider list, so add any future proxy providers to it there, not in the UI.
 - **Upgrade:** bump `version` in the HelmRelease. Upgrade one minor release at a time (for example 2026.8 → 2026.10), and back up Postgres first: `kubectl -n authentik exec authentik-postgres-0 -- pg_dump -U authentik authentik > authentik.sql`.
 - **Fresh install must migrate in one uninterrupted run.** If the first migration run on an empty database is killed partway, the next start runs the legacy `tenant_to_brand` system migration. That migration rewrites the partial history (`authentik_tenants` → `authentik_brands`), and every later start fails with `InconsistentMigrationHistory`. On these nodes the first run takes more than 10 minutes, which is why the HelmRelease has a 20m timeout and a 30m `progressDeadlineSeconds`. To recover a fresh install that never came up:
