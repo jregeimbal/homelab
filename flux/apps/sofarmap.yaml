@@ -148,7 +148,7 @@ spec:
           type: RuntimeDefault
       containers:
         - name: app
-          image: ghcr.io/jregeimbal/sofarmap:202610170935_02e4ca1
+          image: ghcr.io/jregeimbal/sofarmap:202610171618_86fabf4
           env:
             - name: ADDR
               value: ":8080"
@@ -205,6 +205,13 @@ spec:
           ports:
             - name: http
               containerPort: 8080
+          # The first start loads the Natural Earth boundaries (~2 minutes on arm64); allow up to 10.
+          startupProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            periodSeconds: 10
+            failureThreshold: 60
           readinessProbe:
             httpGet:
               path: /healthz
@@ -214,7 +221,6 @@ spec:
             httpGet:
               path: /healthz
               port: http
-            initialDelaySeconds: 30
             periodSeconds: 30
             timeoutSeconds: 5
           resources:
