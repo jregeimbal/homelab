@@ -7,6 +7,8 @@
 #                                                    without touching the existing keys)
 #   - flux/apps/sofarmap-ghcr-pull.sealedsecret.yaml read:packages token for the private images
 #
+# With --ghcr-only, only the pull secret is sealed (the other two are already committed).
+#
 # Plaintext lives only in memory and a mode-600 temp file that is removed on exit. The same OIDC client
 # secret goes into both namespaces. GOOGLE_MAPS_API_KEY and ORS_API_KEY may be left empty (the editor
 # then runs without the basemap / directions).
@@ -17,10 +19,20 @@ seal() { kubeseal --controller-namespace flux-system --controller-name sealed-se
 umask 077
 tmp=$(mktemp); trap 'rm -f "$tmp"' EXIT
 
+if [ "${1:-}" = "--ghcr-only" ]; then
+  read -r -s -p "GitHub token with read:packages only (for the private images): " ghcr; echo
+  [ -n "$ghcr" ] || { echo "no token entered" >&2; exit 1; }
+  kubectl create secret docker-registry ghcr-pull -n sofarmap --docker-server=ghcr.io \
+    --docker-username="${GHCR_USER:-jregeimbal}" --docker-password="$ghcr" --dry-run=client -o yaml \
+    | seal > flux/apps/sofarmap-ghcr-pull.sealedsecret.yaml
+  echo "Sealed flux/apps/sofarmap-ghcr-pull.sealedsecret.yaml."
+  exit 0
+fi
+
 read -r -s -p "GitHub token with read:packages only (for the private images): " ghcr; echo
+[ -n "$ghcr" ] || { echo "no token entered" >&2; exit 1; }
 read -r -p  "GOOGLE_MAPS_API_KEY (browser key; referrer-restrict it to https://sofarmap.hartley-gray.ts.net/*): " gmaps
 read -r -p  "ORS_API_KEY (openrouteservice.org; optional): " ors
-[ -n "$ghcr" ] || { echo "no token entered" >&2; exit 1; }
 
 pg=$(openssl rand -hex 24)
 oidc=$(openssl rand -hex 32)
