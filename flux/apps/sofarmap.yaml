@@ -148,7 +148,7 @@ spec:
           type: RuntimeDefault
       containers:
         - name: app
-          image: ghcr.io/jregeimbal/sofarmap:202610170935_02e4ca1
+          image: ghcr.io/jregeimbal/sofarmap:202610171618_86fabf4
           env:
             - name: ADDR
               value: ":8080"
