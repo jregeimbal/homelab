@@ -1,0 +1,6 @@
+discord.py
+python-telegram-bot
+faster-whisper
+python-dotenv
+firecrawl-py==4.17.0
+hermes-agent[all]
