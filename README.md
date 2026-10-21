@@ -125,6 +125,7 @@ GitOps-managed Kubernetes cluster with Tailscale for external access and Longhor
 | Grafana    | monitoring  | Metrics visualization dashboard                | Tailscale Ingress (HTTPS) |
 | Authentik  | authentik   | Identity provider (SSO/OIDC) for homelab apps  | Tailscale Ingress (HTTPS) |
 | Trading Assistant | trading-assistant | Strategy research UI and daily trading agent (Webull paper) | Tailscale Ingress (HTTPS, authentik SSO) |
+| Sofarmap | sofarmap | Printable maps of Jon's travels (PostGIS, map editor) | Tailscale Ingress (HTTPS, authentik SSO) |
 
 [Full app reference →](docs/apps.md)
 

@@ -37,6 +37,9 @@ sed -i -e "/AUTO_SETUP_GLOBAL_PASSWORD=/ s/=.*/=$AUTO_SETUP_GLOBAL_PASSWORD/" /V
 sed -i -e '/AUTO_SETUP_LOCALE=/ s/=.*/=en_US\.UTF-8/' /Volumes/DIETPISETUP/dietpi.txt
 sed -i -e '/AUTO_SETUP_KEYBOARD_LAYOUT=/ s/=.*/=us/' /Volumes/DIETPISETUP/dietpi.txt
 sed -i -e '/AUTO_SETUP_TIMEZONE=/ s/=.*/=America\/New_York/' /Volumes/DIETPISETUP/dietpi.txt
+# Keep the clock synced continuously (daemon + drift), not only once at boot: the boards have no
+# battery-backed clock, so a boot-time sync that fails (network not up yet) leaves them hours behind.
+sed -i -e '/CONFIG_NTP_MODE=/ s/=.*/=4/' /Volumes/DIETPISETUP/dietpi.txt
 sed -i -e "/AUTO_SETUP_NET_HOSTNAME=/ s/=.*/=$AUTO_SETUP_NET_HOSTNAME/" /Volumes/DIETPISETUP/dietpi.txt
 sed -i -e '/AUTO_SETUP_AUTOMATED=/ s/=.*/=1/' /Volumes/DIETPISETUP/dietpi.txt
 sed -i -e '/AUTO_SETUP_BROWSER_INDEX=/ s/=.*/=-2/' /Volumes/DIETPISETUP/dietpi.txt
