@@ -320,16 +320,12 @@ jobs:
         id: git_sha
         run: echo "sha=${GITHUB_SHA::7}" >> "$GITHUB_OUTPUT"
 
+      # Jon-agent intentionally NOT upgraded in this release: v0.22.5 is
+      # validated on ana + wander first; jon stays on v2026.9.24 until that
+      # passes (see PR #79 discussion).
       - name: Update hermes-jon.yaml
         run: |
-          set -e
-          VERSION="${{ steps.version.outputs.version }}"
-          SHA="${{ steps.git_sha.outputs.sha }}"
-          IMAGE="${REGISTRY}/${OWNER}/${IMAGE_NAME}:${VERSION}-${SHA}"
-          IMAGE_CURRENT="ghcr.io/jregeimbal/hermes-agent-jregeimbal-homelab"
-          sed -i "s|repository: ${IMAGE_CURRENT}|repository: ${IMAGE%:*}|" flux/apps/hermes-jon.yaml
-          sed -i "s|image: ${IMAGE_CURRENT}.*|image: ${IMAGE}|" flux/apps/hermes-jon.yaml
-          sed -i "s|tag: .*|tag: \"${IMAGE#*:}\"|" flux/apps/hermes-jon.yaml
+          echo "hermes-jon intentionally not bumped in this release; leaving flux/apps/hermes-jon.yaml untouched"
 
       - name: Update hermes-ana.yaml
         run: |
@@ -364,7 +360,7 @@ jobs:
           BOT_ID=$(gh api "/users/${BOT}" --jq .id)
           git config user.name "$BOT"
           git config user.email "${BOT_ID}+${BOT}@users.noreply.github.com"
-          git add flux/apps/hermes-jon.yaml flux/apps/hermes-ana.yaml flux/apps/hermes-wander.yaml
+          git add flux/apps/hermes-ana.yaml flux/apps/hermes-wander.yaml
           git commit -m "chore: bump hermes image to ${VERSION}-${{ steps.git_sha.outputs.sha }}" || echo "No changes to commit"
           git push --force-with-lease 2>&1 || { echo "Git push failed - check for conflicts"; exit 1; }
 
