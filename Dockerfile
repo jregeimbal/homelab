@@ -62,6 +62,26 @@ RUN NPM_PREFIX=$(npm config get prefix) && \
     PATH="$NPM_PREFIX/bin:$PATH" claude --version && \
     PATH="$NPM_PREFIX/bin:$PATH" zeroshot --version
 
+# Republish the npm-installed CLIs into /usr/local/bin so the image's *default*
+# PATH resolves them. The v0.22.x base bakes a PATH that omits the npm global
+# prefix's bin dir (/opt/hermes/bin), and the s6 main-wrapper resolves `claude`
+# / `zeroshot` via a shell `command -v` against that default PATH before it ever
+# defers to hermes's store activation. Off-PATH there, the wrapper falls through
+# to `hermes "<cmd>"` and exits with "unknown command" — a real runtime bug, not
+# just a CI nit. /usr/local/bin is on the default PATH; this matches how the base
+# image exposes node/npm/npx/rg/ffmpeg/opencode. (opencode is already in
+# /usr/local/bin via the release tarball above — left untouched.)
+RUN NPM_PREFIX=$(npm config get prefix) && \
+    for bin in claude zeroshot; do \
+        if [ -x "$NPM_PREFIX/bin/$bin" ]; then \
+            ln -sf "$NPM_PREFIX/bin/$bin" "/usr/local/bin/$bin" && \
+            echo "republished $bin -> /usr/local/bin/$bin"; \
+        else \
+            echo "WARNING: $bin not found at $NPM_PREFIX/bin; skipping republish" >&2; \
+        fi; \
+    done && \
+    command -v claude && command -v zeroshot
+
 # Stage the zeroshot patches in a fixed location (COPY cannot use shell
 # variables), then apply them against the resolved global prefix. Each target
 # directory must already exist: a silent miss would leave zeroshot unpatched.
