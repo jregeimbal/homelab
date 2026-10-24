@@ -699,6 +699,29 @@ def version_assertion(image: str, base_image: str) -> tuple[bool, str]:
     return _VERSION_MEMO[key]
 
 
+def _fixture_disk_note(fixture_root: str) -> str:
+    """Report the fixture's OWN filesystem on failure; best-effort, never raises.
+
+    'No space left on device' during the volume copy does not tell you which
+    filesystem was exhausted — on CI runners /tmp (where fixtures live) may be
+    a separate, small mount while / has plenty of room. Show the fixture
+    path's mount + how much was written before the failure.
+    """
+    parts = []
+    for cmd in (
+        ["df", "-h", "--output=source,size,used,avail,fstype,target", fixture_root],
+        ["du", "-sh", fixture_root],
+    ):
+        try:
+            proc = subprocess.run(cmd, capture_output=True, text=True, timeout=120)
+            text = " ".join((proc.stdout or "").strip().splitlines())
+            if text:
+                parts.append(text)
+        except (OSError, subprocess.SubprocessError):
+            pass
+    return ("[contract-test] fixture disk: " + " | ".join(parts)) if parts else ""
+
+
 def _run_manifest_impl(
     manifest_path: str,
     image: str,
@@ -727,7 +750,10 @@ def _run_manifest_impl(
     except (OSError, ValueError, RuntimeError, yaml.YAMLError) as e:
         return False, [f"FAIL {manifest_path} setup: {e}"], str(e)
 
-    root = tempfile.mkdtemp(prefix="contract-fixtures-")
+    root = tempfile.mkdtemp(
+        prefix="contract-fixtures-",
+        dir=os.environ.get("HERMES_CONTRACT_FIXTURE_ROOT") or None,
+    )
     try:
         hosts = prepare_fixtures(pod, cms, root)
     except (OSError, RuntimeError) as e:
@@ -762,6 +788,9 @@ def _run_manifest_impl(
         shutil.rmtree(root, ignore_errors=True)
     else:
         print(f"keeping fixture root for {manifest_path}: {root}", file=sys.stderr)
+        note = _fixture_disk_note(root)
+        if note:
+            lines.append(note)
     return ok, lines, None
 
 
@@ -828,6 +857,8 @@ def _disk_diagnostics(tag: str) -> None:
     for cmd in (
         ["df", "-h", "/"],
         ["df", "-i", "/"],
+        ["df", "-h", "/tmp"],
+        ["findmnt", "-T", "/tmp"],
         ["docker", "system", "df"],
     ):
         try:
