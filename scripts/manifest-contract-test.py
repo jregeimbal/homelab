@@ -786,6 +786,14 @@ def _run_manifest_impl(
 
     if ok:
         shutil.rmtree(root, ignore_errors=True)
+        if os.path.exists(root):
+            # Subtrees written by container processes (root-owned dirs the
+            # host user cannot unlink into) may survive the rmtree. Flag it
+            # instead of failing: on CI the runner is fresh per run, and
+            # fixtures live on the big root disk.
+            lines.append(
+                f"WARN fixture {root} not fully removed (container-owned subtrees)"
+            )
     else:
         print(f"keeping fixture root for {manifest_path}: {root}", file=sys.stderr)
         note = _fixture_disk_note(root)

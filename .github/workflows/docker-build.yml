@@ -189,18 +189,22 @@ jobs:
           fi
 
       - name: Run contract tests
+        env:
+          # Fixtures must live on the runner's big root disk: /tmp on
+          # ubuntu-latest is a 7.9 GB tmpfs, and each fixture's
+          # copy-hermes-source volume is ~3.8 GB since the v0.22.x base
+          # stages node + global node_modules inside /opt/hermes.
+          HERMES_CONTRACT_FIXTURE_ROOT: ${{ github.workspace }}/.contract-fixtures
         run: |
-          # --parallel 1: serialize manifest replays. Since the v0.22.x base
-          # stages node + global node_modules inside /opt/hermes (pm-managed
-          # store), copy-hermes-source duplicates a much larger tree per
-          # manifest; 3-way parallel replays ENOSPC the 14 GB ubuntu-latest
-          # runner (fixtures are deleted on success, so peak = one copy).
+          mkdir -p "${{ env.HERMES_CONTRACT_FIXTURE_ROOT }}"
+          # --parallel 3 (original): with fixtures on the root disk, the
+          # ~11 GB peak of three concurrent copies fits comfortably.
           python3 scripts/manifest-contract-test.py \
             --image "${{ steps.img.outputs.ref }}" \
             --base-image "${{ steps.img.outputs.base }}" \
             --chart-dir "${{ steps.chart.outputs.dir }}" \
             --manifests flux/apps/hermes-jon.yaml flux/apps/hermes-ana.yaml flux/apps/hermes-wander.yaml \
-            --survive 45 --parallel 1 --log-dir /tmp/contract-logs
+            --survive 45 --parallel 3 --log-dir /tmp/contract-logs
 
       - name: Upload container logs
         if: failure()
