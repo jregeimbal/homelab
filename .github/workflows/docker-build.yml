@@ -190,12 +190,17 @@ jobs:
 
       - name: Run contract tests
         run: |
+          # --parallel 1: serialize manifest replays. Since the v0.22.x base
+          # stages node + global node_modules inside /opt/hermes (pm-managed
+          # store), copy-hermes-source duplicates a much larger tree per
+          # manifest; 3-way parallel replays ENOSPC the 14 GB ubuntu-latest
+          # runner (fixtures are deleted on success, so peak = one copy).
           python3 scripts/manifest-contract-test.py \
             --image "${{ steps.img.outputs.ref }}" \
             --base-image "${{ steps.img.outputs.base }}" \
             --chart-dir "${{ steps.chart.outputs.dir }}" \
             --manifests flux/apps/hermes-jon.yaml flux/apps/hermes-ana.yaml flux/apps/hermes-wander.yaml \
-            --survive 45 --parallel 3 --log-dir /tmp/contract-logs
+            --survive 45 --parallel 1 --log-dir /tmp/contract-logs
 
       - name: Upload container logs
         if: failure()
