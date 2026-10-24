@@ -699,6 +699,29 @@ def version_assertion(image: str, base_image: str) -> tuple[bool, str]:
     return _VERSION_MEMO[key]
 
 
+def _fixture_disk_note(fixture_root: str) -> str:
+    """Report the fixture's OWN filesystem on failure; best-effort, never raises.
+
+    'No space left on device' during the volume copy does not tell you which
+    filesystem was exhausted — on CI runners /tmp (where fixtures live) may be
+    a separate, small mount while / has plenty of room. Show the fixture
+    path's mount + how much was written before the failure.
+    """
+    parts = []
+    for cmd in (
+        ["df", "-h", "--output=source,size,used,avail,fstype,target", fixture_root],
+        ["du", "-sh", fixture_root],
+    ):
+        try:
+            proc = subprocess.run(cmd, capture_output=True, text=True, timeout=120)
+            text = " ".join((proc.stdout or "").strip().splitlines())
+            if text:
+                parts.append(text)
+        except (OSError, subprocess.SubprocessError):
+            pass
+    return ("[contract-test] fixture disk: " + " | ".join(parts)) if parts else ""
+
+
 def _run_manifest_impl(
     manifest_path: str,
     image: str,
@@ -727,7 +750,10 @@ def _run_manifest_impl(
     except (OSError, ValueError, RuntimeError, yaml.YAMLError) as e:
         return False, [f"FAIL {manifest_path} setup: {e}"], str(e)
 
-    root = tempfile.mkdtemp(prefix="contract-fixtures-")
+    root = tempfile.mkdtemp(
+        prefix="contract-fixtures-",
+        dir=os.environ.get("HERMES_CONTRACT_FIXTURE_ROOT") or None,
+    )
     try:
         hosts = prepare_fixtures(pod, cms, root)
     except (OSError, RuntimeError) as e:
@@ -760,8 +786,19 @@ def _run_manifest_impl(
 
     if ok:
         shutil.rmtree(root, ignore_errors=True)
+        if os.path.exists(root):
+            # Subtrees written by container processes (root-owned dirs the
+            # host user cannot unlink into) may survive the rmtree. Flag it
+            # instead of failing: on CI the runner is fresh per run, and
+            # fixtures live on the big root disk.
+            lines.append(
+                f"WARN fixture {root} not fully removed (container-owned subtrees)"
+            )
     else:
         print(f"keeping fixture root for {manifest_path}: {root}", file=sys.stderr)
+        note = _fixture_disk_note(root)
+        if note:
+            lines.append(note)
     return ok, lines, None
 
 
@@ -815,6 +852,45 @@ def _plan_for_manifest(manifest: str, chart_dir: str, image: str) -> dict:
         "skipped": skipped,
         "runs": [dataclasses.asdict(r) for r in runs],
     }
+
+
+def _disk_diagnostics(tag: str) -> None:
+    """Print host + docker disk usage; best-effort, never raises.
+
+    On the 14 GB ubuntu-latest runner 'No space left on device' can be
+    either byte or inode exhaustion, so show both. Used before the replays
+    and on any failure, to make the runner's real headroom observable.
+    """
+    print(f"[contract-test] disk diagnostics ({tag})")
+    for cmd in (
+        ["df", "-h", "/"],
+        ["df", "-i", "/"],
+        ["df", "-h", "/tmp"],
+        ["findmnt", "-T", "/tmp"],
+        ["docker", "system", "df"],
+    ):
+        try:
+            proc = subprocess.run(cmd, capture_output=True, text=True, timeout=60)
+            for line in (proc.stdout or "").splitlines():
+                print(f"[contract-test] {line}")
+        except (OSError, subprocess.SubprocessError):
+            pass
+
+
+def _prune_base_image(base_image: str) -> None:
+    """Remove the base image after the version assertion; best-effort.
+
+    The version check is the only consumer of the base image. Its layers
+    (~1-2 GB on disk) would otherwise compete with the fixture copies for
+    the runner's 14 GB root; the candidate image is retained for replays.
+    """
+    try:
+        subprocess.run(
+            ["docker", "rmi", "-f", base_image], capture_output=True, timeout=120
+        )
+        print(f"[contract-test] removed base image {base_image} after version check")
+    except (OSError, subprocess.SubprocessError) as e:
+        print(f"[contract-test] could not remove base image {base_image}: {e}")
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -875,10 +951,14 @@ def main(argv: list[str] | None = None) -> int:
     # effectively different from the image under test.
     if args.base_image != args.image:
         version_ok, version_detail = check_version(args.image, args.base_image)
+        # The version check is the base image's only consumer; drop its layers
+        # to give the fixture copies room on the small CI runner disk.
+        _prune_base_image(args.base_image)
     else:
         version_ok, version_detail = True, "image and base image are the same reference"
     _PARENT_VERSION = (version_ok, version_detail, args.image, args.base_image)
     print(f"{'PASS' if version_ok else 'FAIL'} version {version_detail}")
+    _disk_diagnostics("before replays")
 
     tasks = [
         (
@@ -914,6 +994,8 @@ def main(argv: list[str] | None = None) -> int:
             rc = max(rc, 1)
     if not version_ok:
         rc = max(rc, 1)
+    if rc != 0:
+        _disk_diagnostics("on failure")
     return rc
 
 
