@@ -32,8 +32,15 @@ spec:
           restart_drain_timeout: 60
           tool_use_enforcement: true
         dashboard:
+          # Authentik SSO (public client, PKCE) is the primary login; basic auth stays as a fallback.
+          # Access is limited to the hermes-jon-users group in the authentik-blueprint-sso blueprint.
+          public_url: https://hermes-jon.hartley-gray.ts.net
+          oauth:
+            self_hosted:
+              issuer: https://authentik.hartley-gray.ts.net/application/o/hermes-jon/
+              client_id: hermes-jon
           basic_auth:
-            username: jon
+            username: jregeimbal
             password_hash: "scrypt$16384$8$1$7IzTAxslIFh/vNEHKb+Zcg==$wWQchEhSB1aQtiMdnzD0pa9eYdGyRx24O0ij/LlO0ns="
         browser:
           allow_private_urls: false

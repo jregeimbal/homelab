@@ -402,6 +402,52 @@ data:
           order: 0
         attrs:
           group: !Find [authentik_core.group, [name, sofarmap-users]]
+      # Hermes agent dashboard (jon-agent): public OIDC client with PKCE, so no client secret to seal.
+      # Reached over HTTPS through the hermes-jon-dashboard Tailscale Ingress.
+      - model: authentik_providers_oauth2.oauth2provider
+        id: hermes-jon-provider
+        identifiers:
+          name: Hermes (jon-agent)
+        attrs:
+          authorization_flow: !Find [authentik_flows.flow, [slug, default-provider-authorization-implicit-consent]]
+          invalidation_flow: !Find [authentik_flows.flow, [slug, default-provider-invalidation-flow]]
+          client_type: public
+          # Required: an empty list allows no grants (the admin UI fills in defaults, blueprints don't).
+          grant_types:
+            - authorization_code
+            - refresh_token
+          client_id: hermes-jon
+          signing_key: !Find [authentik_crypto.certificatekeypair, [name, authentik Self-signed Certificate]]
+          redirect_uris:
+            - matching_mode: strict
+              url: https://hermes-jon.hartley-gray.ts.net/auth/callback
+              redirect_uri_type: authorization
+          property_mappings:
+            - !Find [authentik_providers_oauth2.scopemapping, [managed, goauthentik.io/providers/oauth2/scope-openid]]
+            - !Find [authentik_providers_oauth2.scopemapping, [managed, goauthentik.io/providers/oauth2/scope-email]]
+            - !Find [authentik_providers_oauth2.scopemapping, [managed, goauthentik.io/providers/oauth2/scope-profile]]
+      - model: authentik_core.application
+        id: hermes-jon-app
+        identifiers:
+          slug: hermes-jon
+        attrs:
+          name: Hermes (jon-agent)
+          provider: !KeyOf hermes-jon-provider
+          meta_launch_url: https://hermes-jon.hartley-gray.ts.net/
+      # Created once; memberships are managed in the authentik admin UI afterwards. Only jregeimbal to start.
+      - model: authentik_core.group
+        state: created
+        identifiers:
+          name: hermes-jon-users
+        attrs:
+          users:
+            - !Find [authentik_core.user, [username, jregeimbal]]
+      - model: authentik_policies.policybinding
+        identifiers:
+          target: !KeyOf hermes-jon-app
+          order: 0
+        attrs:
+          group: !Find [authentik_core.group, [name, hermes-jon-users]]
   longhorn.yaml: |
     # Longhorn's UI has no auth of its own: the embedded outpost (inside authentik-server) proxies it.
     # The `longhorn` Tailscale Ingress below points at authentik-server; requests for that host are
