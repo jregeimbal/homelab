@@ -333,7 +333,7 @@ configmaps:
       \    username: jon\ndisplay:\n  interim_assistant_messages: true\n  tool_progress:\
       \ all\nmcp_servers:\n  context7:\n    headers:\n      CONTEXT7_API_KEY: ctx7sk-f038e7b8-560b-4116-b059-f2fbbf7f365d\n\
       \    url: https://mcp.context7.com/mcp\nmodel:\n  api_key: superduper\n  base_url:\
-      \ http://jonathans-mac-studio:8000/v1\n  default: mtplx-qwen38-27b-optimized-quality\n\
+      \ http://jonathans-mac-studio:8000/v1\n  default: mtplx-qwen38-27b-optimized-speed\n\
       \  provider: custom\nsecurity:\n  approval_mode: smart\n  redact_secrets: true\n\
       \  tirith_enabled: true\n  tirith_fail_open: true\nstt:\n  enabled: true\nterminal:\n\
       \  backend: local\n  cwd: .\n  env_passthrough:\n  - PATH\n  - GITHUB_TOKEN\n\

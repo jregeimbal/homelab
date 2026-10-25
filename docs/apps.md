@@ -35,7 +35,7 @@ All platforms restricted to specific allowed user IDs.
 ### Model Configuration
 
 - **Provider:** auto
-- **Default model:** `mtplx-qwen38-27b-optimized-quality`
+- **Default model:** `mtplx-qwen38-27b-optimized-speed`
 - **Base URL:** `http://jonathans-mac-studio:8000/v1` (local workstation running Ollama)
 - **STT:** Enabled (faster-whisper)
 
