@@ -96,7 +96,7 @@ spec:
         command:
           - /bin/sh
           - -ec
-        image: ghcr.io/jregeimbal/hermes-agent-jregeimbal-homelab:v0.22.5-bc56236
+        image: ghcr.io/jregeimbal/hermes-agent-jregeimbal-homelab:v0.22.5-12321a1
         imagePullPolicy: IfNotPresent
         name: fix-data-ownership
         securityContext:
@@ -128,7 +128,7 @@ spec:
     fullnameOverride: hermes-ana
     image:
       repository: ghcr.io/jregeimbal/hermes-agent-jregeimbal-homelab
-      tag: "v0.22.5-bc56236"
+      tag: "v0.22.5-12321a1"
       pullPolicy: IfNotPresent
     podSecurityContext:
       fsGroup: 10000
