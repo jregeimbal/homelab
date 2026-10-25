@@ -20,3 +20,22 @@ spec:
     - name: desktop
       port: 9119
       targetPort: 9119
+---
+# HTTPS front for the dashboard (9119) with a Let's Encrypt cert from Tailscale:
+# https://hermes-jon.hartley-gray.ts.net. Authentik SSO needs an https redirect URI and secure cookies.
+# The LoadBalancer above keeps the API server (8642) and webui (8787) and the old :9119 address.
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: hermes-jon-dashboard
+  namespace: jon-agent
+spec:
+  ingressClassName: tailscale
+  defaultBackend:
+    service:
+      name: hermes-hermes-agent-tailscale
+      port:
+        number: 9119
+  tls:
+    - hosts:
+        - hermes-jon

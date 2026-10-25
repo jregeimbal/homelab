@@ -34,7 +34,7 @@ spec:
         dashboard:
           # Authentik SSO (public client, PKCE) is the primary login; basic auth stays as a fallback.
           # Access is limited to the hermes-jon-users group in the authentik-blueprint-sso blueprint.
-          public_url: http://jon-agent-hermes-hermes-agent-tailscale.hartley-gray.ts.net:9119
+          public_url: https://hermes-jon.hartley-gray.ts.net
           oauth:
             self_hosted:
               issuer: https://authentik.hartley-gray.ts.net/application/o/hermes-jon/
