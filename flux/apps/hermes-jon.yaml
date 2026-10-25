@@ -34,7 +34,7 @@ spec:
         dashboard:
           basic_auth:
             username: jon
-            password_hash: "scrypt$16384$8$1$B5rFRJf54X6PtqZt3tt2kA==$gaNio1AY8BJwtKXK32JEm08BQNinGzcArMT5tTAF/0s="
+            password_hash: "scrypt$16384$8$1$7IzTAxslIFh/vNEHKb+Zcg==$wWQchEhSB1aQtiMdnzD0pa9eYdGyRx24O0ij/LlO0ns="
         browser:
           allow_private_urls: false
           command_timeout: 60
