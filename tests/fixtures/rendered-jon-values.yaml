@@ -23,7 +23,7 @@ config:
       tool_progress: all
     model:
       base_url: http://jonathans-mac-studio:8000/v1
-      default: mtplx-qwen38-27b-optimized-quality
+      default: mtplx-qwen38-27b-optimized-speed
       provider: custom
       api_key: superduper
     security:

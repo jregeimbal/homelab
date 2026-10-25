@@ -1,6 +1,6 @@
 {
   "$schema": "https://opencode.ai/config.json",
-  "model": "mtplx/mtplx-qwen38-27b-optimized-quality",
+  "model": "mtplx/mtplx-qwen38-27b-optimized-speed",
   "provider": {
     "lmstudio": {
       "npm": "@ai-sdk/openai-compatible",
@@ -24,8 +24,8 @@
         "baseURL": "http://jonathans-mac-studio:8000/v1"
       },
       "models": {
-        "mtplx-qwen38-27b-optimized-quality": {
-          "name": "mtplx-qwen38-27b-optimized-quality"
+        "mtplx-qwen38-27b-optimized-speed": {
+          "name": "mtplx-qwen38-27b-optimized-speed"
         }
       }
     }
