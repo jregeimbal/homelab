@@ -283,9 +283,9 @@ Custom node dashboard available at `assets/grafana-dashboards/nodes.json`.
 
 | App        | Namespace    | Storage     | Access     | Chart Version |
 |------------|-------------|-------------|------------|---------------|
-| Hermes (jon) | jon-agent  | 5Gi Longhorn| ClusterIP  | from git      |
+| Hermes (jon) | jon-agent  | 5Gi Longhorn| Tailscale LB (API, webui, desktop) | from git      |
 | Hermes (ana) | ana-agent  | 5Gi Longhorn| ClusterIP  | from git      |
-| Hermes (wander) | wander-agent | 30Gi Longhorn| ClusterIP  | from git   |
+| Hermes (wander) | wander-agent | 30Gi Longhorn| Tailscale LB (API, webui, desktop) | from git   |
 | Open WebUI | open-webui  | 10Gi Longhorn| Tailscale Ingress (HTTPS) | 14.6.0      |
 | Prometheus | monitoring  | 5Gi Longhorn| ClusterIP  | 29.8.0        |
 | Grafana    | monitoring  | 5Gi Longhorn| Tailscale Ingress (HTTPS) | 10.5.15     |

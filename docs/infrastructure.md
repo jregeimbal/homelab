@@ -38,7 +38,7 @@
 **Namespace:** longhorn-system  
 **HelmRelease:** `longhorn`  
 **Chart source:** `longhorn` HelmRepository (charts.longhorn.io)  
-**Version:** 11.11.2
+**Version:** 1.11.2
 
 ### Purpose
 
@@ -50,6 +50,9 @@ Longhorn provides distributed block storage for the cluster. All persistent volu
 - Grafana (5Gi)
 - Open WebUI (10Gi)
 - Hermes agents (5Gi each)
+- Authentik (5Gi)
+- Trading Assistant (15Gi: Postgres 10Gi + web 5Gi)
+- Sofarmap (30Gi: Postgres 10Gi + app 20Gi)
 - All other stateful workloads
 
 ### Configuration
@@ -102,6 +105,8 @@ Services with `service.type: LoadBalancer` and `service.loadBalancerClass: tails
 - Authentik (authentik namespace)
 - Trading Assistant (trading-assistant namespace)
 - Sofarmap (sofarmap namespace)
+- Hermes (jon) — Tailscale LB service exposing the API server (8642), webui (8787), and desktop (9119) (jon-agent namespace)
+- Hermes (wander) — same Tailscale LB service (wander-agent namespace)
 - Longhorn UI (longhorn-system namespace)
 
 ---
@@ -155,7 +160,7 @@ SealedSecrets allows encrypted secrets to be safely committed to Git. The Sealed
 | authentik-oidc-clients.sealedsecret.yaml  | authentik   | OIDC client secrets for all SSO apps |
 | trading-assistant-secrets.sealedsecret.yaml | trading-assistant | Postgres/DUI passwords, paper Webull keys, master key |
 | trading-assistant-ghcr-pull.sealedsecret.yaml | trading-assistant | GHCR read:packages pull token |
-| sofarmap-secrets.sealedsecret.yaml        | sofarmap    | Postgres/OIDC/session keys, Google Maps + OSRM keys |
+| sofarmap-secrets.sealedsecret.yaml        | sofarmap    | Postgres/OIDC/session keys, Google Maps + OpenRouteService keys |
 | sofarmap-ghcr-pull.sealedsecret.yaml      | sofarmap    | GHCR read:packages pull token |
 
 ### Tools Required
@@ -178,4 +183,5 @@ All HelmRepositories are defined in `flux/cluster/helmrepositories.yaml`:
 | grafana           | https://grafana.github.io/helm-charts         | Helm   |
 | openwebui         | https://open-webui.github.io/helm-charts      | Helm   |
 | tailscale         | https://pkgs.tailscale.com/helmcharts         | Helm   |
+| authentik         | https://charts.goauthentik.io                 | Helm   |
 | hermes-agent      | https://github.com/ultraworkers/hermes-agent-helm-chart | Git |

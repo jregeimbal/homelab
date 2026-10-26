@@ -39,7 +39,8 @@ External Services ──┐
 │  │ Operator     │    │ (Tailscale   │   │
 │  │ (tailscale/  │    │  class)      │   │
 │  │  tailscale)  │    │ (Grafana,    │   │
-│  └──────────────┘    │  Open WebUI) │   │
+│  └──────────────┘    │ Open WebUI,  │   │
+│                      │ Hermes)      │   │
 │                      └──────────────┘   │
 │  MetalLB (metallb-system) — unused in   │
 │  production (Tailscale replaces it)      │
