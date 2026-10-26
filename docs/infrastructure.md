@@ -99,7 +99,28 @@ Services with `service.type: LoadBalancer` and `service.loadBalancerClass: tails
 
 - Grafana (monitoring namespace)
 - Open WebUI (open-webui namespace)
+- Authentik (authentik namespace)
+- Trading Assistant (trading-assistant namespace)
+- Sofarmap (sofarmap namespace)
 - Longhorn UI (longhorn-system namespace)
+
+---
+
+## NodeLocal DNSCache
+
+**Namespace:** kube-system  
+**Kind:** DaemonSet (`node-local-dns`), deployed as plain manifests from `flux/infra/node-local-dns.yaml`
+
+### Purpose
+
+A per-node DNS cache that eliminates the conntrack UDP race condition causing intermittent pod DNS timeouts. It uses plain CoreDNS v1.14.2 on the host network instead of the upstream `k8s-dns-node-cache` wrapper (these kernels lack `CONFIG_DUMMY`, which the wrapper's dummy-interface setup needs).
+
+### How It Works
+
+- **Address:** bound to `169.254.20.10` (link-local) on a dedicated empty bridge, `nodelocaldns`. Not on `lo` — k0s picks the first non-127.x IPv4 address in interface order as its API address, and a controller restarted with the address on `lo` advertised 169.254.20.10 and broke worker kube-proxy connections (2026-10-15). The bridge is created after boot, so it sorts after eth0 on every node.
+- **Redirect:** two init containers prepare the host; one DNATs pod DNS traffic (UDP/TCP 10.96.0.10:53 → 169.254.20.10:53) in iptables PREROUTING only (not OUTPUT, which would loop the cache's own upstream forwarding). Pods keep `10.96.0.10` in resolv.conf — no kubelet change needed, since k0s forbids setting `clusterDNS` in workerProfiles.
+- **Resolvers:** `cluster.local`/reverse-lookup zones forward to CoreDNS (10.96.0.10:53) over TCP (`force_tcp` removes the race on the cache→CoreDNS leg). Everything else forwards to the node's systemd-resolved stub (127.0.0.53, reachable on the host network), which sends tailnet names to Tailscale and everything else to the router — see `scripts/set-node-dns.sh`. Nodes without resolved fall back to 100.100.100.100 (Tailscale MagicDNS).
+- **Corefile changes:** the Corefile is mounted with `subPath`, which never sees ConfigMap updates — bump the `homelab/corefile-revision` pod annotation when it changes.
 
 ---
 
@@ -128,6 +149,14 @@ SealedSecrets allows encrypted secrets to be safely committed to Git. The Sealed
 | hermes-ana-secrets.sealedsecret.yaml      | ana-agent   | API server key                    |
 | hermes-wander-secrets.sealedsecret.yaml   | wander-agent| API server key, dashboard session token, Firecrawl key |
 | open-webui-secret.sealedsecret.yaml       | open-webui  | Open WebUI secrets, Hermes API key |
+| open-webui-oidc.sealedsecret.yaml         | open-webui  | Authentik OIDC client secret      |
+| grafana-oidc.sealedsecret.yaml            | monitoring  | Authentik OIDC client secret      |
+| authentik-secrets.sealedsecret.yaml       | authentik   | Secret key, Postgres password, bootstrap password |
+| authentik-oidc-clients.sealedsecret.yaml  | authentik   | OIDC client secrets for all SSO apps |
+| trading-assistant-secrets.sealedsecret.yaml | trading-assistant | Postgres/DUI passwords, paper Webull keys, master key |
+| trading-assistant-ghcr-pull.sealedsecret.yaml | trading-assistant | GHCR read:packages pull token |
+| sofarmap-secrets.sealedsecret.yaml        | sofarmap    | Postgres/OIDC/session keys, Google Maps + OSRM keys |
+| sofarmap-ghcr-pull.sealedsecret.yaml      | sofarmap    | GHCR read:packages pull token |
 
 ### Tools Required
 

@@ -36,7 +36,7 @@ All platforms restricted to specific allowed user IDs.
 
 - **Provider:** auto
 - **Default model:** `mtplx-qwen38-27b-optimized-speed`
-- **Base URL:** `http://jonathans-mac-studio:8000/v1` (local workstation running Ollama)
+- **Base URL:** `http://jonathans-mac-studio:8000/v1` (local workstation; OpenAI-compatible endpoint served by mtplx)
 - **STT:** Enabled (faster-whisper)
 
 ### Settings
@@ -71,7 +71,7 @@ Referenced from `hermes-jon-secrets` SealedSecret. Contains:
 - **Python dependencies:** same as jon-agent — sealed venv in the image plus hermes-managed extras (e.g. `faster-whisper`) lazy-installed into `/opt/data/lazy-packages`
 - **Data volume claim name:** `hermes-ana-data` (vs `hermes-hermes-agent-data` for jon)
 - **fullnameOverride:** `hermes-ana` (vs default `hermes` for jon)
-- **Base URL:** Same local model endpoint (`http://jonathans-mac-studio:1234/v1`)
+- **Base URL:** Same local model endpoint (`http://jonathans-mac-studio:8000/v1`, mtplx)
 
 ### Shared Components
 
@@ -289,3 +289,5 @@ Custom node dashboard available at `assets/grafana-dashboards/nodes.json`.
 | Open WebUI | open-webui  | 10Gi Longhorn| Tailscale Ingress (HTTPS) | 14.6.0      |
 | Prometheus | monitoring  | 5Gi Longhorn| ClusterIP  | 29.8.0        |
 | Grafana    | monitoring  | 5Gi Longhorn| Tailscale Ingress (HTTPS) | 10.5.15     |
+| Trading Assistant | trading-assistant | 15Gi Longhorn (Postgres 10Gi + web 5Gi) | Tailscale Ingress (HTTPS, authentik SSO) | plain manifests |
+| Sofarmap   | sofarmap    | 30Gi Longhorn (Postgres 10Gi + app 20Gi) | Tailscale Ingress (HTTPS, authentik SSO) | plain manifests |

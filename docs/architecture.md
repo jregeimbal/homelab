@@ -55,6 +55,7 @@ External Services ──┐
 - **Tailscale Operator:** Provides cluster-external access via Tailscale MagicDNS. All LoadBalancer-type services use the `tailscale` loadBalancerClass, which Tailscale Operator intercepts and exposes via the Tailnet.
 - **MetalLB:** Installed but not actively used for LoadBalancer services. Kept as fallback.
 - **Kuberouter:** Native Kubernetes CNI providing pod networking with autoMTU.
+- **NodeLocal DNSCache:** A DaemonSet (`kube-system`, `flux/infra/node-local-dns.yaml`) runs CoreDNS on every node, bound to 169.254.20.10 on a dedicated `nodelocaldns` bridge. Pod DNS traffic to the cluster DNS IP (10.96.0.10:53) is transparently DNAT'd to the local cache via iptables PREROUTING rules (no kubelet `clusterDNS` change needed — k0s computes it from the service CIDR). This eliminates the conntrack UDP race that caused intermittent pod DNS timeouts. `cluster.local` queries forward to CoreDNS over TCP (`force_tcp`); external queries go to the node's systemd-resolved stub (127.0.0.53), which sends tailnet names to Tailscale MagicDNS and everything else to the router (fallback when resolved is absent: 100.100.100.100 directly). Node DNS is configured with `scripts/set-node-dns.sh`.
 
 ## Storage
 
@@ -194,22 +195,34 @@ flux/
 │   └── apps-kustomization.yaml # Triggers apps deployment
 ├── infra/
 │   ├── kustomization.yaml      # Infra entry point
+│   ├── sealed-secrets.yaml     # SealedSecrets controller
 │   ├── longhorn.yaml           # Longhorn storage
 │   ├── metallb.yaml            # MetalLB (fallback)
 │   ├── tailscale.yaml          # Tailscale operator
 │   ├── tailscale-connector.yaml# Tailscale cluster egress
-│   └── sealed-secrets.yaml     # SealedSecrets controller
+│   └── node-local-dns.yaml     # NodeLocal DNSCache (per-node DNS)
 └── apps/
     ├── kustomization.yaml      # Apps entry point
-    ├── monitoring.yaml         # Prometheus + Grafana
     ├── hermes-jon.yaml         # Hermes agent (jon)
     ├── hermes-ana.yaml         # Hermes agent (ana)
     ├── hermes-wander.yaml      # Hermes agent (wander)
+    ├── hermes-jon-tailscale.yaml
+    ├── hermes-wander-tailscale.yaml
     ├── hermes-jon-secrets.sealedsecret.yaml
     ├── hermes-ana-secrets.sealedsecret.yaml
     ├── hermes-wander-secrets.sealedsecret.yaml
-    ├── hermes-jon-tailscale.yaml
-    ├── hermes-wander-tailscale.yaml
+    ├── monitoring.yaml         # Prometheus + Grafana
+    ├── grafana-oidc.sealedsecret.yaml
     ├── open-webui.yaml         # Open WebUI
-    └── open-webui-secret.sealedsecret.yaml
+    ├── open-webui-secret.sealedsecret.yaml
+    ├── open-webui-oidc.sealedsecret.yaml
+    ├── authentik.yaml          # Identity provider (+ SSO blueprint)
+    ├── authentik-secrets.sealedsecret.yaml
+    ├── authentik-oidc-clients.sealedsecret.yaml
+    ├── trading-assistant.yaml  # Strategy research UI + trading agent
+    ├── trading-assistant-secrets.sealedsecret.yaml
+    ├── trading-assistant-ghcr-pull.sealedsecret.yaml
+    ├── sofarmap.yaml           # Travel maps (PostGIS)
+    ├── sofarmap-secrets.sealedsecret.yaml
+    └── sofarmap-ghcr-pull.sealedsecret.yaml
 ```

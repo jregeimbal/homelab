@@ -28,6 +28,7 @@ graph TB
         LS[Longhorn<br/>Storage]
         ML[MetalLB<br/>Networking]
         TS[Tailscale<br/>Operator]
+        NLD[NodeLocal DNSCache<br/>per-node DNS]
         SS[SealedSecrets]
     end
 
@@ -44,7 +45,7 @@ graph TB
         WA[WhatsApp]
         TG[Telegram]
         DC[Discord]
-        MODEL[Local Model<br/>jonathans-mac-studio]
+        MODEL[Local LLM (mtplx)<br/>jonathans-mac-studio]
     end
 
     REPO --> FLUX
@@ -58,7 +59,9 @@ graph TB
     C1 --> LS
     C1 --> ML
     C1 --> TS
+    C1 --> NLD
     C1 --> SS
+    NLD -->|node DNS via systemd-resolved| TS
 
     W1 --> LS
     W2 --> LS
@@ -136,6 +139,7 @@ GitOps-managed Kubernetes cluster with Tailscale for external access and Longhor
 | Longhorn      | longhorn-system| Distributed block storage (UI behind authentik: `https://longhorn.<tailnet>.ts.net`) |
 | MetalLB       | metallb-system | Layer 2 load balancer (fallback)     |
 | Tailscale     | tailscale      | External access via Tailnet          |
+| NodeLocal DNSCache | kube-system | Per-node DNS cache on 169.254.20.10 (DaemonSet on every node); external DNS via the node's systemd-resolved, tailnet names via Tailscale MagicDNS |
 | SealedSecrets | flux-system    | Encrypted secrets for Git            |
 
 [Full infrastructure reference →](docs/infrastructure.md)
@@ -152,9 +156,13 @@ Flux CD watches this repository and automatically applies all Kubernetes manifes
 
 ## CI/CD
 
-GitHub Actions builds the custom Hermes Docker image from `Dockerfile.hermes`.
+GitHub Actions builds the custom Hermes Docker image (`ghcr.io/jregeimbal/hermes-agent-jregeimbal-homelab`, amd64 + arm64) from `Dockerfile`.
 
-[Workflow: `.github/workflows/hermes-image.yml`](.github/workflows/hermes-image.yml)
+- [CI](.github/workflows/ci.yml) — YAML/JSON lint, kubeconform manifest validation, gitleaks secret scanning, Claude Code security review (runs on PRs after the other checks pass)
+- [Docker Build](.github/workflows/docker-build.yml) — build and push to GHCR, plus pre-merge gates: contract tests (manifest replay against the pinned chart) and the upstream changelog diff
+- [Security Review](.github/workflows/security.yml) — manual dispatch only
+
+[Pre-merge gate details →](docs/ci-gates.md)
 
 ## Docs
 
