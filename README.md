@@ -120,7 +120,7 @@ GitOps-managed Kubernetes cluster with Tailscale for external access and Longhor
 
 | App        | Namespace    | Description                                    | Access         |
 |------------|-------------|------------------------------------------------|----------------|
-| Hermes (jon) | jon-agent  | AI agent with WhatsApp/Telegram/Discord integrations | Tailscale LB (API 8642, webui 8787, desktop 9119) |
+| Hermes (jon) | jon-agent  | AI agent with WhatsApp/Telegram/Discord integrations | Tailscale LB (API 8642, webui 8787, desktop 9119) + Ingress (HTTPS dashboard, authentik SSO) |
 | Hermes (ana) | ana-agent  | AI agent (second instance)                     | ClusterIP      |
 | Hermes (wander) | wander-agent | Personal travel-planning agent, WhatsApp only | Tailscale LB (API 8642, webui 8787, desktop 9119) |
 | Open WebUI | open-webui  | Web UI for LLM interaction, backed by Hermes   | Tailscale Ingress (HTTPS) |

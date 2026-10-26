@@ -46,10 +46,10 @@ Longhorn provides distributed block storage for the cluster. All persistent volu
 
 ### Used By
 
-- Prometheus (5Gi)
+- Prometheus (8Gi server, 2Gi Alertmanager)
 - Grafana (5Gi)
 - Open WebUI (10Gi)
-- Hermes agents (5Gi each)
+- Hermes agents (jon 30Gi, wander 30Gi, ana 5Gi)
 - Authentik (5Gi)
 - Trading Assistant (15Gi: Postgres 10Gi + web 5Gi)
 - Sofarmap (30Gi: Postgres 10Gi + app 20Gi)
@@ -93,21 +93,27 @@ Installed but not actively used for production services. Tailscale Operator has 
 
 ### External Access Pattern
 
-Services with `service.type: LoadBalancer` and `service.loadBalancerClass: tailscale` are automatically exposed on the Tailnet via the Tailscale Operator. This replaces the need for:
-- Ingress controllers
-- MetalLB IP pools
-- Port forwarding
+Two patterns, both handled by the Tailscale Operator (no cluster ingress controller, MetalLB pool or port forwarding needed):
+
+- **`Ingress` with `ingressClassName: tailscale`:** HTTPS on `https://<name>.<tailnet>.ts.net` with a Let's Encrypt certificate issued by Tailscale. Used for web UIs that need TLS (and OIDC redirects).
+- **`Service` with `type: LoadBalancer` and `loadBalancerClass: tailscale`:** a plain TCP/HTTP tailnet device, one per Service. Used for the Hermes API, webui and dashboard ports.
 
 ### Used By
+
+Tailscale Ingress (HTTPS):
 
 - Grafana (monitoring namespace)
 - Open WebUI (open-webui namespace)
 - Authentik (authentik namespace)
 - Trading Assistant (trading-assistant namespace)
 - Sofarmap (sofarmap namespace)
-- Hermes (jon) — Tailscale LB service exposing the API server (8642), webui (8787), and desktop (9119) (jon-agent namespace)
-- Hermes (wander) — same Tailscale LB service (wander-agent namespace)
-- Longhorn UI (longhorn-system namespace)
+- Hermes (jon) dashboard, `hermes-jon-dashboard` (jon-agent namespace): `https://hermes-jon.<tailnet>.ts.net`
+- Longhorn UI (longhorn-system namespace, proxied through authentik)
+
+Tailscale LoadBalancer Service:
+
+- Hermes (jon): API server (8642), webui (8787) and desktop dashboard (9119) (jon-agent namespace)
+- Hermes (wander): the same three ports (wander-agent namespace)
 
 ---
 
@@ -158,7 +164,7 @@ SealedSecrets allows encrypted secrets to be safely committed to Git. The Sealed
 | grafana-oidc.sealedsecret.yaml            | monitoring  | Authentik OIDC client secret      |
 | authentik-secrets.sealedsecret.yaml       | authentik   | Secret key, Postgres password, bootstrap password |
 | authentik-oidc-clients.sealedsecret.yaml  | authentik   | OIDC client secrets for all SSO apps |
-| trading-assistant-secrets.sealedsecret.yaml | trading-assistant | Postgres/DUI passwords, paper Webull keys, master key |
+| trading-assistant-secrets.sealedsecret.yaml | trading-assistant | Postgres password and database URL, web login password, OIDC client secret, master key (`TA_SECRET_KEY`), paper Webull keys |
 | trading-assistant-ghcr-pull.sealedsecret.yaml | trading-assistant | GHCR read:packages pull token |
 | sofarmap-secrets.sealedsecret.yaml        | sofarmap    | Postgres/OIDC/session keys, Google Maps + OpenRouteService keys |
 | sofarmap-ghcr-pull.sealedsecret.yaml      | sofarmap    | GHCR read:packages pull token |
