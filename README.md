@@ -45,7 +45,7 @@ graph TB
         WA[WhatsApp]
         TG[Telegram]
         DC[Discord]
-        MODEL[Local LLM (mtplx)<br/>jonathans-mac-studio]
+        MODEL["Local LLM (mtplx)<br/>jonathans-mac-studio"]
     end
 
     REPO --> FLUX
@@ -158,7 +158,7 @@ Flux CD watches this repository and automatically applies all Kubernetes manifes
 
 GitHub Actions builds the custom Hermes Docker image (`ghcr.io/jregeimbal/hermes-agent-jregeimbal-homelab`, amd64 + arm64) from `Dockerfile`.
 
-- [CI](.github/workflows/ci.yml) — YAML/JSON lint, kubeconform manifest validation, gitleaks secret scanning, Claude Code security review (runs on PRs after the other checks pass)
+- [CI](.github/workflows/ci.yml) — YAML/JSON lint, Mermaid diagram syntax check (`scripts/mermaid-lint`), kubeconform manifest validation, gitleaks secret scanning, Claude Code security review (runs on PRs after the other checks pass)
 - [Docker Build](.github/workflows/docker-build.yml) — build and push to GHCR, plus pre-merge gates: contract tests (manifest replay against the pinned chart) and the upstream changelog diff
 - [Security Review](.github/workflows/security.yml) — manual dispatch only
 

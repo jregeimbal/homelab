@@ -1,0 +1,10 @@
+{
+  "name": "mermaid-lint",
+  "private": true,
+  "type": "module",
+  "description": "Parses every mermaid code block in the given Markdown files; fails on syntax errors GitHub would also reject.",
+  "dependencies": {
+    "jsdom": "25.0.1",
+    "mermaid": "11.4.1"
+  }
+}
