@@ -4,7 +4,7 @@
 
 **HelmRelease:** `hermes` in `jon-agent` namespace  
 **Chart source:** GitRepository `hermes-agent` (github.com/ultraworkers/hermes-agent-helm-chart)  
-**Data volume:** 5Gi Longhorn (`hermes-hermes-agent-data`)
+**Data volume:** 30Gi Longhorn (`hermes-hermes-agent-data`)
 
 ### Components
 
@@ -36,7 +36,7 @@ All platforms restricted to specific allowed user IDs.
 
 - **Provider:** auto
 - **Default model:** `mtplx-qwen38-27b-optimized-speed`
-- **Base URL:** `http://jonathans-mac-studio:8000/v1` (local workstation running Ollama)
+- **Base URL:** `http://jonathans-mac-studio:8000/v1` (local workstation; OpenAI-compatible endpoint served by mtplx)
 - **STT:** Enabled (faster-whisper)
 
 ### Settings
@@ -71,7 +71,7 @@ Referenced from `hermes-jon-secrets` SealedSecret. Contains:
 - **Python dependencies:** same as jon-agent — sealed venv in the image plus hermes-managed extras (e.g. `faster-whisper`) lazy-installed into `/opt/data/lazy-packages`
 - **Data volume claim name:** `hermes-ana-data` (vs `hermes-hermes-agent-data` for jon)
 - **fullnameOverride:** `hermes-ana` (vs default `hermes` for jon)
-- **Base URL:** Same local model endpoint (`http://jonathans-mac-studio:1234/v1`)
+- **Base URL:** Same local model endpoint (`http://jonathans-mac-studio:8000/v1`, mtplx)
 
 ### Shared Components
 
@@ -204,12 +204,14 @@ Since 2025.10, Authentik no longer needs Redis.
 ### Operations
 
 - **First login:** user `akadmin`, password from `kubectl -n authentik get secret authentik-secrets -o jsonpath='{.data.AUTHENTIK_BOOTSTRAP_PASSWORD}' | base64 -d`. Then create your own admin user, add it to `authentik Admins`, and deactivate `akadmin`.
-- **SSO apps:** Grafana, Open WebUI, Trading Assistant and Sofarmap are defined in the `authentik-blueprint-sso` ConfigMap in `flux/apps/authentik.yaml`, a blueprint the worker applies on start and whenever it changes. To add an app, add a provider and application entry there (client ID in the blueprint, secret via `!Env` from `authentik-oidc-clients`), and seal the same secret into the app's namespace. The worker reads that secret only at start, so bump `homelab/oidc-clients-revision` (worker `podAnnotations`) when adding a key. Pods reach `https://authentik.<tailnet>.ts.net` directly, because node DNS forwards to MagicDNS.
+- **SSO apps:** Grafana, Open WebUI, Trading Assistant, Sofarmap and the jon-agent Hermes dashboard are defined in the `authentik-blueprint-sso` ConfigMap in `flux/apps/authentik.yaml`, a blueprint the worker applies on start and whenever it changes. To add an app, add a provider and application entry there (client ID in the blueprint, secret via `!Env` from `authentik-oidc-clients`), and seal the same secret into the app's namespace. The worker reads that secret only at start, so bump `homelab/oidc-clients-revision` (worker `podAnnotations`) when adding a key. Pods reach `https://authentik.<tailnet>.ts.net` directly, because node DNS forwards to MagicDNS.
   - **Grafana:** "Sign in with authentik". Members of `authentik Admins` get the Grafana Admin role, and everyone else gets Viewer. The local `admin` login still works.
   - **Open WebUI:** "Continue with authentik". Accounts are tied to the authentik user's OIDC subject, not their email. Merging by email is deliberately off: authentik sends `email_verified: false`, so a user who could change their email could take over someone else's account. The first account created becomes admin, and later SSO users start as `pending`. If an SSO login's email already belongs to a local account, Open WebUI refuses it ("email taken").
   - **Trading Assistant:** signs in through authentik automatically. Access needs membership in `trading-admins`, `trading-traders` or `trading-viewers` (created once by the blueprint, with `jregeimbal` in `trading-admins`; manage members in the authentik admin UI). Role changes apply at the next sign-in (sessions last 8 hours).
   - **Sofarmap:** signs in through authentik. Access needs membership in `sofarmap-users`.
+  - **Hermes (jon-agent dashboard):** `https://hermes-jon.<tailnet>.ts.net`, served by the `hermes-jon-dashboard` Tailscale Ingress. A public OIDC client (PKCE, no client secret to seal; client ID `hermes-jon`) that Hermes reads from `dashboard.oauth.self_hosted` in `hermes-jon.yaml`. The redirect URI is `https://hermes-jon.<tailnet>.ts.net/auth/callback`, which Hermes builds from `dashboard.public_url`. Access needs membership in `hermes-jon-users` (created once by the blueprint, with `jregeimbal` in it). Basic auth stays as a fallback (`dashboard.basic_auth`, user `jregeimbal`; only the scrypt hash is in the repo). The old plain-HTTP `:9119` address on the LoadBalancer still serves the same logins.
   - **Longhorn:** the UI has no login of its own, so authentik proxies it. The `longhorn` Tailscale Ingress points at `authentik-server`, whose embedded outpost matches the `longhorn.<tailnet>.ts.net` host to a proxy provider, requires an `authentik Admins` login, and then forwards to `longhorn-frontend`. The blueprint sets the embedded outpost's whole provider list, so add any future proxy providers to it there, not in the UI.
+- **Blueprint not applying:** if a change to `authentik-blueprint-sso` doesn't take effect and the worker log shows `TimeLimitExceeded` from `apply_blueprint`, runs were too slow (two can start together and block each other on database locks, and stale planner statistics make the policy-binding queries take tens of seconds). Fix: `kubectl -n authentik exec authentik-postgres-0 -- psql -U authentik -c ANALYZE`, then `kubectl -n authentik rollout restart deploy/authentik-worker`. Check with `ak shell` that the application exists.
 - **Upgrade:** bump `version` in the HelmRelease. Upgrade one minor release at a time (for example 2026.8 → 2026.10), and back up Postgres first: `kubectl -n authentik exec authentik-postgres-0 -- pg_dump -U authentik authentik > authentik.sql`.
 - **Fresh install must migrate in one uninterrupted run.** If the first migration run on an empty database is killed partway, the next start runs the legacy `tenant_to_brand` system migration. That migration rewrites the partial history (`authentik_tenants` → `authentik_brands`), and every later start fails with `InconsistentMigrationHistory`. On these nodes the first run takes more than 10 minutes, which is why the HelmRelease has a 20m timeout and a 30m `progressDeadlineSeconds`. To recover a fresh install that never came up:
   1. `flux suspend hr authentik -n authentik`, then scale `authentik-server` and `authentik-worker` to 0. Wait until their pods are gone, or they'll reconnect and race the reset.
@@ -255,7 +257,7 @@ Since 2025.10, Authentik no longer needs Redis.
 
 ### Configuration
 
-- **Storage:** 5Gi Longhorn (volumeClaimTemplate)
+- **Storage:** 8Gi Longhorn for the server (the chart's default `server.persistentVolume.size`) and 2Gi for Alertmanager. The `server.storage.volumeClaimTemplate` 5Gi in `monitoring.yaml` is not used by this chart version, so it doesn't change the volume size
 - **Access:** ClusterIP (internal only, scraped by Grafana)
 
 ---
@@ -283,9 +285,11 @@ Custom node dashboard available at `assets/grafana-dashboards/nodes.json`.
 
 | App        | Namespace    | Storage     | Access     | Chart Version |
 |------------|-------------|-------------|------------|---------------|
-| Hermes (jon) | jon-agent  | 5Gi Longhorn| ClusterIP  | from git      |
+| Hermes (jon) | jon-agent  | 30Gi Longhorn| Tailscale LB (API, webui, desktop) + Tailscale Ingress (HTTPS dashboard, authentik SSO) | from git |
 | Hermes (ana) | ana-agent  | 5Gi Longhorn| ClusterIP  | from git      |
-| Hermes (wander) | wander-agent | 30Gi Longhorn| ClusterIP  | from git   |
+| Hermes (wander) | wander-agent | 30Gi Longhorn| Tailscale LB (API, webui, desktop) | from git   |
 | Open WebUI | open-webui  | 10Gi Longhorn| Tailscale Ingress (HTTPS) | 14.6.0      |
-| Prometheus | monitoring  | 5Gi Longhorn| ClusterIP  | 29.8.0        |
+| Prometheus | monitoring  | 8Gi Longhorn (+ 2Gi Alertmanager) | ClusterIP  | 29.8.0        |
 | Grafana    | monitoring  | 5Gi Longhorn| Tailscale Ingress (HTTPS) | 10.5.15     |
+| Trading Assistant | trading-assistant | 15Gi Longhorn (Postgres 10Gi + web 5Gi) | Tailscale Ingress (HTTPS, authentik SSO) | plain manifests |
+| Sofarmap   | sofarmap    | 30Gi Longhorn (Postgres 10Gi + app 20Gi) | Tailscale Ingress (HTTPS, authentik SSO) | plain manifests |

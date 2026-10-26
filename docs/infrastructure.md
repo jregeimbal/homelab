@@ -38,7 +38,7 @@
 **Namespace:** longhorn-system  
 **HelmRelease:** `longhorn`  
 **Chart source:** `longhorn` HelmRepository (charts.longhorn.io)  
-**Version:** 11.11.2
+**Version:** 1.11.2
 
 ### Purpose
 
@@ -46,10 +46,13 @@ Longhorn provides distributed block storage for the cluster. All persistent volu
 
 ### Used By
 
-- Prometheus (5Gi)
+- Prometheus (8Gi server, 2Gi Alertmanager)
 - Grafana (5Gi)
 - Open WebUI (10Gi)
-- Hermes agents (5Gi each)
+- Hermes agents (jon 30Gi, wander 30Gi, ana 5Gi)
+- Authentik (5Gi)
+- Trading Assistant (15Gi: Postgres 10Gi + web 5Gi)
+- Sofarmap (30Gi: Postgres 10Gi + app 20Gi)
 - All other stateful workloads
 
 ### Configuration
@@ -90,16 +93,45 @@ Installed but not actively used for production services. Tailscale Operator has 
 
 ### External Access Pattern
 
-Services with `service.type: LoadBalancer` and `service.loadBalancerClass: tailscale` are automatically exposed on the Tailnet via the Tailscale Operator. This replaces the need for:
-- Ingress controllers
-- MetalLB IP pools
-- Port forwarding
+Two patterns, both handled by the Tailscale Operator (no cluster ingress controller, MetalLB pool or port forwarding needed):
+
+- **`Ingress` with `ingressClassName: tailscale`:** HTTPS on `https://<name>.<tailnet>.ts.net` with a Let's Encrypt certificate issued by Tailscale. Used for web UIs that need TLS (and OIDC redirects).
+- **`Service` with `type: LoadBalancer` and `loadBalancerClass: tailscale`:** a plain TCP/HTTP tailnet device, one per Service. Used for the Hermes API, webui and dashboard ports.
 
 ### Used By
 
+Tailscale Ingress (HTTPS):
+
 - Grafana (monitoring namespace)
 - Open WebUI (open-webui namespace)
-- Longhorn UI (longhorn-system namespace)
+- Authentik (authentik namespace)
+- Trading Assistant (trading-assistant namespace)
+- Sofarmap (sofarmap namespace)
+- Hermes (jon) dashboard, `hermes-jon-dashboard` (jon-agent namespace): `https://hermes-jon.<tailnet>.ts.net`
+- Longhorn UI (longhorn-system namespace, proxied through authentik)
+
+Tailscale LoadBalancer Service:
+
+- Hermes (jon): API server (8642), webui (8787) and desktop dashboard (9119) (jon-agent namespace)
+- Hermes (wander): the same three ports (wander-agent namespace)
+
+---
+
+## NodeLocal DNSCache
+
+**Namespace:** kube-system  
+**Kind:** DaemonSet (`node-local-dns`), deployed as plain manifests from `flux/infra/node-local-dns.yaml`
+
+### Purpose
+
+A per-node DNS cache that eliminates the conntrack UDP race condition causing intermittent pod DNS timeouts. It uses plain CoreDNS v1.14.2 on the host network instead of the upstream `k8s-dns-node-cache` wrapper (these kernels lack `CONFIG_DUMMY`, which the wrapper's dummy-interface setup needs).
+
+### How It Works
+
+- **Address:** bound to `169.254.20.10` (link-local) on a dedicated empty bridge, `nodelocaldns`. Not on `lo` — k0s picks the first non-127.x IPv4 address in interface order as its API address, and a controller restarted with the address on `lo` advertised 169.254.20.10 and broke worker kube-proxy connections (2026-10-15). The bridge is created after boot, so it sorts after eth0 on every node.
+- **Redirect:** two init containers prepare the host; one DNATs pod DNS traffic (UDP/TCP 10.96.0.10:53 → 169.254.20.10:53) in iptables PREROUTING only (not OUTPUT, which would loop the cache's own upstream forwarding). Pods keep `10.96.0.10` in resolv.conf — no kubelet change needed, since k0s forbids setting `clusterDNS` in workerProfiles.
+- **Resolvers:** `cluster.local`/reverse-lookup zones forward to CoreDNS (10.96.0.10:53) over TCP (`force_tcp` removes the race on the cache→CoreDNS leg). Everything else forwards to the node's systemd-resolved stub (127.0.0.53, reachable on the host network), which sends tailnet names to Tailscale and everything else to the router — see `scripts/set-node-dns.sh`. Nodes without resolved fall back to 100.100.100.100 (Tailscale MagicDNS).
+- **Corefile changes:** the Corefile is mounted with `subPath`, which never sees ConfigMap updates — bump the `homelab/corefile-revision` pod annotation when it changes.
 
 ---
 
@@ -128,6 +160,14 @@ SealedSecrets allows encrypted secrets to be safely committed to Git. The Sealed
 | hermes-ana-secrets.sealedsecret.yaml      | ana-agent   | API server key                    |
 | hermes-wander-secrets.sealedsecret.yaml   | wander-agent| API server key, dashboard session token, Firecrawl key |
 | open-webui-secret.sealedsecret.yaml       | open-webui  | Open WebUI secrets, Hermes API key |
+| open-webui-oidc.sealedsecret.yaml         | open-webui  | Authentik OIDC client secret      |
+| grafana-oidc.sealedsecret.yaml            | monitoring  | Authentik OIDC client secret      |
+| authentik-secrets.sealedsecret.yaml       | authentik   | Secret key, Postgres password, bootstrap password |
+| authentik-oidc-clients.sealedsecret.yaml  | authentik   | OIDC client secrets for all SSO apps |
+| trading-assistant-secrets.sealedsecret.yaml | trading-assistant | Postgres password and database URL, web login password, OIDC client secret, master key (`TA_SECRET_KEY`), paper Webull keys |
+| trading-assistant-ghcr-pull.sealedsecret.yaml | trading-assistant | GHCR read:packages pull token |
+| sofarmap-secrets.sealedsecret.yaml        | sofarmap    | Postgres/OIDC/session keys, Google Maps + OpenRouteService keys |
+| sofarmap-ghcr-pull.sealedsecret.yaml      | sofarmap    | GHCR read:packages pull token |
 
 ### Tools Required
 
@@ -149,4 +189,5 @@ All HelmRepositories are defined in `flux/cluster/helmrepositories.yaml`:
 | grafana           | https://grafana.github.io/helm-charts         | Helm   |
 | openwebui         | https://open-webui.github.io/helm-charts      | Helm   |
 | tailscale         | https://pkgs.tailscale.com/helmcharts         | Helm   |
+| authentik         | https://charts.goauthentik.io                 | Helm   |
 | hermes-agent      | https://github.com/ultraworkers/hermes-agent-helm-chart | Git |
