@@ -45,7 +45,7 @@ graph TB
         WA[WhatsApp]
         TG[Telegram]
         DC[Discord]
-        MODEL[Local LLM (mtplx)<br/>jonathans-mac-studio]
+        MODEL["Local LLM (mtplx)<br/>jonathans-mac-studio"]
     end
 
     REPO --> FLUX
