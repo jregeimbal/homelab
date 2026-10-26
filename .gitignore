@@ -7,4 +7,5 @@ __pycache__/
 *.pyc
 .pytest_cache/
 .env
-.worktrees/node_modules/
+.worktrees/
+node_modules/
