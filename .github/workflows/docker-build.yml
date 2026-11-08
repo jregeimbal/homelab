@@ -376,7 +376,12 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     needs: [changes]
-    if: needs.changes.outputs.gates == 'true'
+    # Review gate only: it diffs the candidate bump against the last reviewed
+    # pin, so it belongs on the PR (pre-merge). On a push to main the changes
+    # job always reports gates=true, so without this guard the job re-detects
+    # the same already-reviewed breaking window and fails spuriously, turning
+    # main red after a legitimate merge — hence PRs only.
+    if: github.event_name == 'pull_request' && needs.changes.outputs.gates == 'true'
     permissions:
       contents: read
       pull-requests: write
