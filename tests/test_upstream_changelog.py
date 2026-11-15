@@ -22,6 +22,11 @@ def _manifest(tmp_path, name, tag):
     return str(p)
 
 
+def _main_argv(tmp_path):
+    return ['--dockerfile', _dockerfile(tmp_path, 'v2026.9.24'),
+            '--manifests', _manifest(tmp_path, 'a', 'v2026.9.23-6e01c6c')]
+
+
 def test_base_from_dockerfile(tmp_path):
     assert uc.base_from_dockerfile(_dockerfile(tmp_path, 'v2026.9.24')) == ('nousresearch/hermes-agent', 'v2026.9.24')
 
@@ -50,27 +55,95 @@ def test_equal_tags_no_diff(tmp_path, monkeypatch):
                   '--manifests', _manifest(tmp_path, 'a', 'v2026.9.24-6e01c6c')])
     assert rc == 0
 
-def test_classify_breaking_in_commit_message():
-    p = {'ahead_by': 1, 'commits': [{'sha': 'a', 'commit': {'message': 'feat!: drop --insecure flag (BREAKING)'}}], 'files': []}
+def test_classify_bang_subject_is_hard():
+    p = {'ahead_by': 1, 'commits': [{'sha': 'a', 'commit': {'message': 'feat!: drop --insecure flag'}}], 'files': []}
     cls = uc.classify(p)
-    assert cls['breaking_detected'] and any('BREAKING' in l for l in cls['breaking'])
+    assert cls['breaking_detected'] and cls['hard'] and not cls['soft']
 
-def test_classify_breaking_in_changelog_file_only():
+def test_classify_breaking_footer_is_hard():
+    p = {'ahead_by': 1, 'commits': [{'sha': 'a', 'commit': {'message': 'feat: flag cleanup\n\nBREAKING CHANGE: --insecure is gone'}}], 'files': []}
+    cls = uc.classify(p)
+    assert cls['breaking_detected'] and any('BREAKING CHANGE' in l for l in cls['hard'])
+
+def test_classify_changelog_added_breaking_marker_is_hard():
     p = {'ahead_by': 1, 'commits': [{'sha': 'a', 'commit': {'message': 'docs: update changelog'}}],
-         'files': [{'filename': 'CHANGELOG.md', 'patch': '- removed `--no-open` (no longer supported)\n'}]}
+         'files': [{'filename': 'CHANGELOG.md', 'patch': '+ ## v2\n+ - `--no-open` was removed (BREAKING)\n'}]}
     assert uc.classify(p)['breaking_detected']
-    p2 = dict(p, files=[{'filename': 'src/util.py', 'patch': '- removed helper\n'}])
-    assert not uc.classify(p2)['breaking_detected']
+
+def test_classify_changelog_added_keyword_is_soft_only():
+    p = {'ahead_by': 1, 'commits': [{'sha': 'a', 'commit': {'message': 'docs: update changelog'}}],
+         'files': [{'filename': 'CHANGELOG.md', 'patch': '+ - `--no-open` is no longer supported\n'}]}
+    cls = uc.classify(p)
+    assert not cls['breaking_detected'] and cls['soft']
+
+def test_classify_changelog_removed_lines_ignored():
+    p = {'ahead_by': 1, 'commits': [{'sha': 'a', 'commit': {'message': 'docs: update changelog'}}],
+         'files': [{'filename': 'CHANGELOG.md', 'patch': '- removed `--no-open` (no longer supported, BREAKING)\n'}]}
+    cls = uc.classify(p)
+    assert not cls['breaking_detected'] and not cls['soft']
+
+def test_classify_non_changelog_patch_ignored():
+    p = {'ahead_by': 1, 'commits': [{'sha': 'a', 'commit': {'message': 'refactor: cleanup'}}],
+         'files': [{'filename': 'src/util.py', 'patch': '+ removed helper (BREAKING)\n'}]}
+    cls = uc.classify(p)
+    assert not cls['breaking_detected'] and not cls['soft']
+
+def test_classify_commit_body_noise_not_flagged():
+    # The v0.23.0 → v0.23.1 false-positive class: keyword hits in commit
+    # message bodies (review notes, rebase notes, CI plumbing) must not fire.
+    p = {'ahead_by': 1,
+         'commits': [{'sha': 'a1b2c3d',
+                      'commit': {'message': 'fix(ci): self-updater gate order\n\n'
+                                            'The gate now runs before anything is removed; it requires the aux host pin.'}}],
+         'files': []}
+    cls = uc.classify(p)
+    assert not cls['breaking_detected'] and not cls['soft']
+
+def test_classify_subject_keyword_is_soft_only():
+    p = {'ahead_by': 1, 'commits': [{'sha': 'a', 'commit': {'message': 'chore: fixture now requires a pnpm pin'}}], 'files': []}
+    cls = uc.classify(p)
+    assert not cls['breaking_detected'] and cls['soft']
 
 def test_classify_clean():
     p = {'ahead_by': 2, 'commits': [{'sha': 'a', 'commit': {'message': 'fix: typo'}}, {'sha': 'b', 'commit': {'message': 'feat: new tool'}}], 'files': []}
     assert not uc.classify(p)['breaking_detected']
 
+def test_classify_release_notes_heading_is_hard():
+    r = uc.classify_release('# Hermes Agent v2\n\n### Breaking changes\n- removed `--no-open` flag\n')
+    assert r['hard'] and not r['soft']
+
+def test_classify_release_notes_clean():
+    r = uc.classify_release('# Hermes Agent v2\n\n## About this release\nSmall patch.\n')
+    assert not r['hard'] and not r['soft']
+
 def test_fetch_failure_exit_2(tmp_path, monkeypatch):
     monkeypatch.setattr(uc, 'fetch_compare', lambda *a, **k: (_ for _ in ()).throw(RuntimeError('HTTP 404')))
-    rc = uc.main(['--dockerfile', _dockerfile(tmp_path, 'v2026.9.24'),
-                  '--manifests', _manifest(tmp_path, 'a', 'v2026.9.23-6e01c6c')])
+    monkeypatch.setattr(uc, 'fetch_release', lambda *a, **k: None)
+    rc = uc.main(_main_argv(tmp_path))
     assert rc == 2
+
+def test_main_soft_only_exit_0(tmp_path, monkeypatch):
+    payload = {'ahead_by': 1,
+               'commits': [{'sha': 'a', 'commit': {'message': 'chore: fixture now requires a pnpm pin'}}],
+               'files': []}
+    monkeypatch.setattr(uc, 'fetch_compare', lambda *a, **k: payload)
+    monkeypatch.setattr(uc, 'fetch_release', lambda *a, **k: None)
+    assert uc.main(_main_argv(tmp_path)) == 0
+
+def test_main_hard_exit_10(tmp_path, monkeypatch):
+    payload = {'ahead_by': 1,
+               'commits': [{'sha': 'a', 'commit': {'message': 'feat!: drop --insecure flag'}}],
+               'files': []}
+    monkeypatch.setattr(uc, 'fetch_compare', lambda *a, **k: payload)
+    monkeypatch.setattr(uc, 'fetch_release', lambda *a, **k: None)
+    assert uc.main(_main_argv(tmp_path)) == 10
+
+def test_main_release_notes_block(tmp_path, monkeypatch):
+    payload = {'ahead_by': 1, 'commits': [{'sha': 'a', 'commit': {'message': 'feat: x'}}], 'files': []}
+    monkeypatch.setattr(uc, 'fetch_compare', lambda *a, **k: payload)
+    monkeypatch.setattr(uc, 'fetch_release',
+                        lambda *a, **k: {'tag': 'v2026.9.24', 'body': '### Breaking changes\n- removed flag\n'})
+    assert uc.main(_main_argv(tmp_path)) == 10
 
 def test_fetch_compare_read_timeout_is_runtime_error(monkeypatch):
     class SlowBody:
@@ -86,6 +159,16 @@ def test_render_comment_cap():
     p = {'ahead_by': 3, 'commits': [{'sha': f'c{i}', 'commit': {'message': 'm' * 500}} for i in range(3)],
          'files': [{'filename': 'CHANGELOG.md', 'patch': 'x' * 100000}]}
     assert len(uc.render_comment('r/o', 'a', 'b', uc.classify(p))) <= 30000
+
+def test_render_comment_lists_soft_as_review():
+    p = {'ahead_by': 1, 'commits': [{'sha': 'a', 'commit': {'message': 'chore: now requires a restart'}}], 'files': []}
+    text = uc.render_comment('r/o', 'a', 'b', uc.classify(p))
+    assert 'Possible breaking changes' in text and 'not blocking' in text
+
+def test_render_comment_no_soft_section_when_clean():
+    p = {'ahead_by': 1, 'commits': [{'sha': 'a', 'commit': {'message': 'fix: typo'}}], 'files': []}
+    text = uc.render_comment('r/o', 'a', 'b', uc.classify(p))
+    assert 'Possible breaking changes' not in text and 'Breaking changes (blocking)' not in text
 
 def test_render_comment_flags_truncated_compare():
     p = {'ahead_by': 5173, 'commits': [{'sha': f'c{i}', 'commit': {'message': 'fix'}} for i in range(250)]}
