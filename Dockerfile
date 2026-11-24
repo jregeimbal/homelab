@@ -1,4 +1,4 @@
-FROM nousresearch/hermes-agent:v0.23.1
+FROM nousresearch/hermes-agent:v0.23.3
 # CI: see docs/ci-gates.md for pre-merge gates
 
 RUN curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg | dd of=/usr/share/keyrings/githubcli-archive-keyring.gpg \
